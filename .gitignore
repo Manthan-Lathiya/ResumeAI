@@ -1,46 +1,41 @@
-### Root / general ###
-.DS_Store
-Thumbs.db
-*.log
+# Python
+*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
+db.sqlite3
+*.sqlite3
 
-### Node / React (client, server) ###
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Node
 node_modules/
 dist/
 build/
-.vite/
-.parcel-cache/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+.cache/
 
-### Environment variables (client/.env, server/.env, ai-service/.env) ###
+# Environment variables
 .env
 .env.local
-.env.*.local
+.env.production
 
-### Python / Django (ai-service) ###
-__pycache__/
-*.py[codz]
-*.pyc
-*.pyo
-.Python
-*.egg-info/
-.eggs/
-.venv/
-venv/
-env/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-db.sqlite3
-staticfiles/
-media/
-
-### IDE ###
+# IDE
 .vscode/
 .idea/
-
-### OS ###
 *.swp
 *.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+server/uploads/*
+!server/uploads/.gitkeep
+
+# Logs
+*.log
+npm-debug.log*
