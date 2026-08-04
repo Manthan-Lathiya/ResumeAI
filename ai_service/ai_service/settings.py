@@ -4,7 +4,7 @@ Django settings for ResumeAI project.
 This file configures the Django backend that handles:
 - User authentication (JWT tokens)
 - Resume data storage (SQLite)
-- AI-powered resume analysis (Anthropic Claude API)
+- AI-powered resume analysis (Google Gemini API)
 """
 
 import os
@@ -181,6 +181,6 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ──────────────────────────────────────────────
-# ANTHROPIC API KEY (for Claude AI)
+# GEMINI API KEY (for Google Gemini AI)
 # ──────────────────────────────────────────────
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')

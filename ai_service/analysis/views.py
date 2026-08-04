@@ -23,7 +23,7 @@ from django.shortcuts import get_object_or_404
 
 from .models import AnalysisResult
 from .serializers import AnalysisResultSerializer, CompareJDRequestSerializer
-from .services.claude_service import analyze_resume, compare_with_job_description
+from .services.gemini_service import analyze_resume, compare_with_job_description
 from .services.resume_parser import extract_text_from_file, resume_to_text
 from resumes.models import Resume
 
