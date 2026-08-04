@@ -101,7 +101,7 @@ IMPORTANT RULES:
 
     # Call Gemini API
     response = client.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
     )
 
@@ -188,7 +188,7 @@ IMPORTANT RULES:
 6. Return ONLY the JSON object, no other text"""
 
     response = client.models.generate_content(
-        model='gemini-2.0-flash',
+        model='gemini-3.5-flash',
         contents=prompt,
     )
 
