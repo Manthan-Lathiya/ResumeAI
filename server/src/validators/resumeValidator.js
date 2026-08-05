@@ -52,7 +52,17 @@ const resumeSchema = z.object({
   })).optional().default([]),
 
   status: z.enum(['draft', 'complete']).optional().default('draft'),
-});
+}).transform((data) => ({
+  // Convert camelCase (frontend) to snake_case (Django)
+  title: data.title,
+  personal_info: data.personalInfo,
+  summary: data.summary,
+  experience: data.experience,
+  education: data.education,
+  skills: data.skills,
+  projects: data.projects,
+  status: data.status,
+}));
 
 // Reuse the validate middleware from authValidator
 const { validate } = require('./authValidator');

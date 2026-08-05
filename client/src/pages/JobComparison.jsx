@@ -1,22 +1,29 @@
 /**
  * Job Description Comparison Page
  *
- * Compare a saved resume against a job description.
+ * Compare a saved resume OR uploaded file against a job description.
  * Returns match score, missing keywords, and tailored suggestions.
+ *
+ * Features:
+ * - Upload a PDF/DOCX file OR select a saved resume
+ * - Paste job description text
+ * - AI-powered match analysis
  */
 
 import { useState, useEffect } from 'react';
 import { getResumes } from '../api/resumes';
 import { compareJobDescription } from '../api/analysis';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../api/axios';
 import {
   GitCompare, Sparkles, CheckCircle, XCircle, ArrowRight,
-  FileText, Target, Zap
+  FileText, Target, Zap, Upload
 } from 'lucide-react';
 
 export default function JobComparison() {
   const [resumes, setResumes] = useState([]);
   const [selectedResumeId, setSelectedResumeId] = useState('');
+  const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState('');
   const [comparing, setComparing] = useState(false);
   const [result, setResult] = useState(null);
@@ -27,15 +34,33 @@ export default function JobComparison() {
         const response = await getResumes();
         setResumes(response.data.resumes || []);
       } catch (error) {
-        toast.error('Failed to load resumes');
+        toast.error(getErrorMessage(error, 'Failed to load resumes.'));
       }
     }
     loadResumes();
   }, []);
 
+  function handleFileChange(e) {
+    const selected = e.target.files[0];
+    if (selected) {
+      const validTypes = ['.pdf', '.docx'];
+      const ext = selected.name.toLowerCase().slice(selected.name.lastIndexOf('.'));
+      if (!validTypes.includes(ext)) {
+        toast.error('Only PDF and DOCX files are supported');
+        return;
+      }
+      if (selected.size > 10 * 1024 * 1024) {
+        toast.error('File must be less than 10MB');
+        return;
+      }
+      setFile(selected);
+      setSelectedResumeId('');  // Clear resume selection when file is chosen
+    }
+  }
+
   async function handleCompare() {
-    if (!selectedResumeId) {
-      toast.error('Please select a resume');
+    if (!selectedResumeId && !file) {
+      toast.error('Please select a resume or upload a file');
       return;
     }
     if (jobDescription.length < 50) {
@@ -47,12 +72,11 @@ export default function JobComparison() {
     setResult(null);
 
     try {
-      const response = await compareJobDescription(selectedResumeId, jobDescription);
+      const response = await compareJobDescription(selectedResumeId || null, jobDescription, file);
       setResult(response.data);
       toast.success('Comparison complete!');
     } catch (error) {
-      const message = error.response?.data?.error || 'Comparison failed. Please try again.';
-      toast.error(message);
+      toast.error(getErrorMessage(error, 'Comparison failed. Please try again.'));
     } finally {
       setComparing(false);
     }
@@ -80,37 +104,74 @@ export default function JobComparison() {
       {!result && (
         <div className="glass-card p-8 mb-8 animate-slide-up">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Select Resume */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary-400" />
-                Select Resume
-              </h3>
-              {resumes.length > 0 ? (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {resumes.map((resume) => (
-                    <button
-                      key={resume.id}
-                      onClick={() => setSelectedResumeId(resume.id)}
-                      className={`w-full text-left p-4 rounded-xl border transition-all duration-300 ${
-                        selectedResumeId === resume.id
-                          ? 'border-primary-500 bg-primary-500/10'
-                          : 'border-gray-800 hover:border-gray-700 bg-gray-800/30'
-                      }`}
-                    >
-                      <p className="font-medium text-gray-200">{resume.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">{resume.status}</p>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-8 text-center border-2 border-dashed border-gray-700 rounded-xl">
-                  <p className="text-gray-500">Create a resume first in the Builder</p>
-                </div>
-              )}
+            {/* Left: Resume Selection */}
+            <div className="space-y-6">
+              {/* Option 1: Upload File */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-accent-400" />
+                  Upload Resume
+                </h3>
+                <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed 
+                               border-gray-700 rounded-xl cursor-pointer hover:border-primary-500/50 
+                               hover:bg-primary-500/5 transition-all duration-300">
+                  <Upload className="w-8 h-8 text-gray-500 mb-2" />
+                  {file ? (
+                    <div className="text-center">
+                      <p className="text-primary-400 font-medium text-sm">{file.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <p className="text-gray-400 text-sm">Drop PDF or DOCX here</p>
+                      <p className="text-xs text-gray-500 mt-1">or click to browse</p>
+                    </div>
+                  )}
+                  <input type="file" accept=".pdf,.docx" onChange={handleFileChange} className="hidden" />
+                </label>
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-gray-800" />
+                <span className="text-xs text-gray-500 uppercase tracking-wider">or</span>
+                <div className="flex-1 h-px bg-gray-800" />
+              </div>
+
+              {/* Option 2: Select Saved Resume */}
+              <div>
+                <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary-400" />
+                  Select Saved Resume
+                </h3>
+                {resumes.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {resumes.map((resume) => (
+                      <button
+                        key={resume.id}
+                        onClick={() => { setSelectedResumeId(resume.id); setFile(null); }}
+                        className={`w-full text-left p-4 rounded-xl border transition-all duration-300 ${
+                          selectedResumeId === resume.id
+                            ? 'border-primary-500 bg-primary-500/10'
+                            : 'border-gray-800 hover:border-gray-700 bg-gray-800/30'
+                        }`}
+                      >
+                        <p className="font-medium text-gray-200">{resume.title}</p>
+                        <p className="text-xs text-gray-500 mt-1">{resume.status}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 text-center border-2 border-dashed border-gray-700 rounded-xl">
+                    <p className="text-gray-500 text-sm">No saved resumes. Create one in the Builder or upload a file above.</p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Job Description */}
+            {/* Right: Job Description */}
             <div>
               <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
                 <Target className="w-5 h-5 text-green-400" />
@@ -135,7 +196,7 @@ Example: We are looking for a Senior Software Engineer with 5+ years of experien
           <div className="mt-8 text-center">
             <button
               onClick={handleCompare}
-              disabled={comparing || !selectedResumeId || jobDescription.length < 50}
+              disabled={comparing || (!selectedResumeId && !file) || jobDescription.length < 50}
               className="btn-primary inline-flex items-center gap-2 text-lg px-8 py-4"
             >
               {comparing ? (

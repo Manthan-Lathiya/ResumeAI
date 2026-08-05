@@ -18,6 +18,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import * as authApi from '../api/auth';
+import { getErrorMessage } from '../api/axios';
 
 // Create the context (like a global variable container)
 const AuthContext = createContext(null);
@@ -79,9 +80,7 @@ export function AuthProvider({ children }) {
       navigate('/dashboard');
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.errors
-        ? Object.values(error.response.data.errors).flat().join(', ')
-        : error.response?.data?.error || 'Signup failed';
+      const message = getErrorMessage(error, 'Signup failed. Please try again.');
       toast.error(message);
       return { success: false, error: message };
     }
@@ -103,10 +102,7 @@ export function AuthProvider({ children }) {
       navigate('/dashboard');
       return { success: true };
     } catch (error) {
-      const message = error.response?.data?.errors?.non_field_errors?.[0]
-        || error.response?.data?.errors
-          ? 'Invalid email or password'
-          : error.response?.data?.error || 'Login failed';
+      const message = getErrorMessage(error, 'Login failed. Please check your credentials.');
       toast.error(message);
       return { success: false, error: message };
     }

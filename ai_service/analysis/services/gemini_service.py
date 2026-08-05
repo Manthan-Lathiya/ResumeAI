@@ -213,3 +213,59 @@ IMPORTANT RULES:
         }
 
     return result
+
+
+def validate_is_resume(text):
+    """
+    Validate whether the given text is from a resume/CV document.
+
+    Uses Gemini to quickly classify the document type. This is a lightweight
+    check run BEFORE the full analysis to avoid wasting AI credits on
+    non-resume documents (invoices, reports, random PDFs, etc.).
+
+    Args:
+        text (str): Extracted text from the uploaded document
+
+    Returns:
+        dict: { "isResume": bool, "reason": str }
+    """
+    client = get_gemini_client()
+
+    # Use only the first 500 chars for classification — faster and cheaper
+    sample_text = text[:500]
+
+    prompt = f"""You are a document classifier. Look at the following text extracted from a document and determine if it is a resume or CV (curriculum vitae).
+
+TEXT SAMPLE:
+---
+{sample_text}
+---
+
+A resume/CV typically contains: personal contact information, work experience, education, skills, and/or a professional summary.
+
+Respond with ONLY a JSON object (no markdown, no code blocks):
+{{
+    "isResume": true or false,
+    "reason": "Brief explanation if NOT a resume (1 sentence). Empty string if it IS a resume."
+}}"""
+
+    response = client.models.generate_content(
+        model='gemini-3.5-flash',
+        contents=prompt,
+    )
+
+    response_text = response.text.strip()
+
+    # Clean up markdown code blocks if present
+    if response_text.startswith('```'):
+        response_text = response_text.split('\n', 1)[1]
+        response_text = response_text.rsplit('```', 1)[0]
+        response_text = response_text.strip()
+
+    try:
+        result = json.loads(response_text)
+    except json.JSONDecodeError:
+        # If parsing fails, assume it's a resume (don't block the user)
+        result = {'isResume': True, 'reason': ''}
+
+    return result

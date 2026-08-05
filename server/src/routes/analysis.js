@@ -70,11 +70,49 @@ router.post('/analyze', aiLimiter, upload.single('file'), async (req, res, next)
 /**
  * POST /api/analysis/compare-jd
  * Compare a resume against a job description.
+ * Accepts either:
+ * - File upload (multipart/form-data with "file" field) + jobDescription
+ * - JSON body with { resumeId, jobDescription }
  */
-router.post('/compare-jd', aiLimiter, validate(compareJDSchema), async (req, res, next) => {
+router.post('/compare-jd', aiLimiter, upload.single('file'), async (req, res, next) => {
   try {
+    // If a file was uploaded, forward it as multipart/form-data
+    if (req.file) {
+      const formData = new FormData();
+      formData.append('file', req.file.buffer, {
+        filename: req.file.originalname,
+        contentType: req.file.mimetype,
+      });
+      formData.append('jobDescription', req.body.jobDescription || '');
+      if (req.body.resumeId) {
+        formData.append('resumeId', req.body.resumeId);
+      }
+
+      const result = await forwardFileToDjango(
+        '/api/analysis/compare-jd/',
+        formData,
+        { authorization: req.headers.authorization }
+      );
+      return res.status(result.status).json(result.data);
+    }
+
+    // No file — validate and forward as JSON
+    const { error, value } = (() => {
+      try {
+        const validated = compareJDSchema.parse(req.body);
+        return { value: validated };
+      } catch (err) {
+        return { error: err };
+      }
+    })();
+
+    if (error) {
+      // Let the error handler deal with it
+      return next(error);
+    }
+
     const result = await forwardToDjango('POST', '/api/analysis/compare-jd/', {
-      data: req.validatedBody,
+      data: value,
       headers: { authorization: req.headers.authorization },
     });
     res.status(result.status).json(result.data);

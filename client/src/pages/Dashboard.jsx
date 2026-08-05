@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getResumes, deleteResume } from '../api/resumes';
 import { getAnalysisHistory } from '../api/analysis';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../api/axios';
 import {
   Plus, FileText, BarChart3, GitCompare, Trash2, Edit3,
   Clock, TrendingUp, Sparkles, ArrowRight, Search
@@ -34,7 +35,7 @@ export default function Dashboard() {
       const response = await getResumes();
       setResumes(response.data.resumes || []);
     } catch (error) {
-      toast.error('Failed to load resumes');
+      toast.error(getErrorMessage(error, 'Failed to load resumes.'));
     } finally {
       setLoadingResumes(false);
     }
@@ -59,7 +60,7 @@ export default function Dashboard() {
       setResumes(resumes.filter(r => r.id !== id));
       toast.success('Resume deleted');
     } catch (error) {
-      toast.error('Failed to delete resume');
+      toast.error(getErrorMessage(error, 'Failed to delete resume.'));
     }
   }
 

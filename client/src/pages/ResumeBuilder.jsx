@@ -9,13 +9,14 @@
  * - Add/remove dynamic items (experience, education, etc.)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createResume, updateResume, getResume } from '../api/resumes';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '../api/axios';
 import {
   User, Briefcase, GraduationCap, Code, FolderOpen, FileText,
-  Plus, Trash2, Save, Eye, EyeOff, ChevronRight, CheckCircle
+  Plus, Trash2, Save, Eye, EyeOff, ChevronRight, CheckCircle, Download
 } from 'lucide-react';
 
 // ─── Section tabs for the form ───
@@ -63,6 +64,7 @@ export default function ResumeBuilder() {
   const [skills, setSkills] = useState([]);
   const [skillInput, setSkillInput] = useState('');
   const [projects, setProjects] = useState([{ ...EMPTY_PROJECT }]);
+  const previewRef = useRef(null);
 
   // Load existing resume if editing
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function ResumeBuilder() {
       setSkills(data.skills || []);
       setProjects(data.projects?.length ? data.projects : [{ ...EMPTY_PROJECT }]);
     } catch (error) {
-      toast.error('Failed to load resume');
+      toast.error(getErrorMessage(error, 'Failed to load resume. Please try again.'));
     }
   }
 
@@ -111,10 +113,131 @@ export default function ResumeBuilder() {
         toast.success('Resume created!');
       }
     } catch (error) {
-      toast.error('Failed to save resume');
+      toast.error(getErrorMessage(error, 'Failed to save resume. Please try again.'));
     } finally {
       setSaving(false);
     }
+  }
+
+  // ─── Download as PDF ───
+  function handleDownload() {
+    const previewContent = previewRef.current;
+    if (!previewContent) {
+      toast.error('Please enable the preview panel first.');
+      return;
+    }
+
+    // Open a new window with print-ready content
+    const printWindow = window.open('', '_blank', 'width=800,height=1100');
+    if (!printWindow) {
+      toast.error('Pop-up blocked. Please allow pop-ups for this site.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title || 'Resume'}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: 'Georgia', 'Times New Roman', serif;
+              color: #1a1a1a;
+              padding: 40px 50px;
+              line-height: 1.5;
+              font-size: 11pt;
+            }
+            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 12px; margin-bottom: 16px; }
+            .header h1 { font-size: 22pt; margin-bottom: 6px; letter-spacing: 1px; }
+            .header .contact { font-size: 9pt; color: #555; }
+            .section-title {
+              font-size: 10pt; font-weight: bold; text-transform: uppercase;
+              letter-spacing: 1.5px; border-bottom: 1px solid #ccc;
+              padding-bottom: 3px; margin-top: 14px; margin-bottom: 8px;
+            }
+            .job-header { display: flex; justify-content: space-between; align-items: baseline; }
+            .job-header strong { font-size: 11pt; }
+            .job-header .date { font-size: 9pt; color: #666; }
+            .company { font-size: 9.5pt; color: #444; }
+            ul { padding-left: 18px; margin-top: 4px; }
+            ul li { margin-bottom: 2px; font-size: 10.5pt; }
+            .edu-row { display: flex; justify-content: space-between; align-items: baseline; }
+            .skills { font-size: 10.5pt; }
+            .project-name { font-weight: bold; }
+            .project-link { font-size: 9pt; color: #0066cc; margin-left: 8px; }
+            .project-desc { font-size: 10pt; margin-top: 2px; }
+            .project-tech { font-size: 9pt; color: #666; margin-top: 2px; }
+            .mb-2 { margin-bottom: 8px; }
+            .mb-3 { margin-bottom: 12px; }
+            @media print {
+              body { padding: 20px 40px; }
+              @page { margin: 0.5in; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>${personalInfo.fullName || 'Your Name'}</h1>
+            <div class="contact">
+              ${[personalInfo.email, personalInfo.phone, personalInfo.location].filter(Boolean).join(' • ')}
+            </div>
+            ${(personalInfo.linkedin || personalInfo.website) ? `<div class="contact">${[personalInfo.linkedin, personalInfo.website].filter(Boolean).join(' • ')}</div>` : ''}
+          </div>
+
+          ${summary ? `<div class="section-title">Professional Summary</div><p style="font-size:10.5pt;color:#333;">${summary}</p>` : ''}
+
+          ${experience.filter(e => e.company || e.title).length > 0 ? `
+            <div class="section-title">Experience</div>
+            ${experience.filter(e => e.company || e.title).map(exp => `
+              <div class="mb-3">
+                <div class="job-header">
+                  <strong>${exp.title || 'Job Title'}</strong>
+                  <span class="date">${exp.startDate} – ${exp.current ? 'Present' : exp.endDate}</span>
+                </div>
+                <div class="company">${exp.company}${exp.location ? ` • ${exp.location}` : ''}</div>
+                ${exp.bullets?.filter(Boolean).length > 0 ? `<ul>${exp.bullets.filter(Boolean).map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+              </div>
+            `).join('')}
+          ` : ''}
+
+          ${education.filter(e => e.institution || e.degree).length > 0 ? `
+            <div class="section-title">Education</div>
+            ${education.filter(e => e.institution || e.degree).map(edu => `
+              <div class="mb-2">
+                <div class="edu-row">
+                  <strong>${edu.degree || 'Degree'}</strong>
+                  <span class="date">${edu.startDate} – ${edu.endDate}</span>
+                </div>
+                <div class="company">${edu.institution}${edu.gpa ? ` • GPA: ${edu.gpa}` : ''}</div>
+              </div>
+            `).join('')}
+          ` : ''}
+
+          ${skills.length > 0 ? `
+            <div class="section-title">Skills</div>
+            <p class="skills">${skills.join(' • ')}</p>
+          ` : ''}
+
+          ${projects.filter(p => p.name).length > 0 ? `
+            <div class="section-title">Projects</div>
+            ${projects.filter(p => p.name).map(proj => `
+              <div class="mb-2">
+                <span class="project-name">${proj.name}</span>
+                ${proj.link ? `<span class="project-link">${proj.link}</span>` : ''}
+                ${proj.description ? `<p class="project-desc">${proj.description}</p>` : ''}
+                ${proj.technologies?.length > 0 ? `<p class="project-tech">Tech: ${proj.technologies.join(', ')}</p>` : ''}
+              </div>
+            `).join('')}
+          ` : ''}
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    // Wait for content to render, then trigger print
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   }
 
   // ─── Dynamic list helpers ───
@@ -258,19 +381,17 @@ export default function ResumeBuilder() {
                     <input value={exp.location} onChange={(e) => updateExperience(i, 'location', e.target.value)}
                            placeholder="Mountain View, CA" className="input-field text-sm" />
                   </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="input-label text-xs">Start Date</label>
-                      <input type="month" value={exp.startDate}
-                             onChange={(e) => updateExperience(i, 'startDate', e.target.value)}
-                             className="input-field text-sm" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="input-label text-xs">End Date</label>
-                      <input type="month" value={exp.endDate} disabled={exp.current}
-                             onChange={(e) => updateExperience(i, 'endDate', e.target.value)}
-                             className="input-field text-sm disabled:opacity-50" />
-                    </div>
+                  <div>
+                    <label className="input-label text-xs">Start Date</label>
+                    <input type="month" value={exp.startDate}
+                           onChange={(e) => updateExperience(i, 'startDate', e.target.value)}
+                           className="input-field text-sm date-input" />
+                  </div>
+                  <div>
+                    <label className="input-label text-xs">End Date</label>
+                    <input type="month" value={exp.endDate} disabled={exp.current}
+                           onChange={(e) => updateExperience(i, 'endDate', e.target.value)}
+                           className="input-field text-sm date-input disabled:opacity-50" />
                   </div>
                 </div>
 
@@ -345,19 +466,17 @@ export default function ResumeBuilder() {
                     <input value={edu.degree} onChange={(e) => updateEducation(i, 'degree', e.target.value)}
                            placeholder="B.S. Computer Science" className="input-field text-sm" />
                   </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="input-label text-xs">Start Date</label>
-                      <input type="month" value={edu.startDate}
-                             onChange={(e) => updateEducation(i, 'startDate', e.target.value)}
-                             className="input-field text-sm" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="input-label text-xs">End Date</label>
-                      <input type="month" value={edu.endDate}
-                             onChange={(e) => updateEducation(i, 'endDate', e.target.value)}
-                             className="input-field text-sm" />
-                    </div>
+                  <div>
+                    <label className="input-label text-xs">Start Date</label>
+                    <input type="month" value={edu.startDate}
+                           onChange={(e) => updateEducation(i, 'startDate', e.target.value)}
+                           className="input-field text-sm date-input" />
+                  </div>
+                  <div>
+                    <label className="input-label text-xs">End Date</label>
+                    <input type="month" value={edu.endDate}
+                           onChange={(e) => updateEducation(i, 'endDate', e.target.value)}
+                           className="input-field text-sm date-input" />
                   </div>
                   <div>
                     <label className="input-label text-xs">GPA (optional)</label>
@@ -612,6 +731,13 @@ export default function ResumeBuilder() {
             <CheckCircle className="w-4 h-4" />
             Save & Complete
           </button>
+          <button
+            onClick={handleDownload}
+            className="btn-secondary text-sm py-2 px-4 flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Download PDF
+          </button>
         </div>
       </div>
 
@@ -650,7 +776,9 @@ export default function ResumeBuilder() {
               <h3 className="text-sm font-medium text-gray-400 mb-3 flex items-center gap-2">
                 <Eye className="w-4 h-4" /> Live Preview
               </h3>
-              {renderPreview()}
+              <div ref={previewRef}>
+                {renderPreview()}
+              </div>
             </div>
           </div>
         )}

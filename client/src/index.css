@@ -86,3 +86,19 @@
   background-size: 200% 200%;
   animation: gradient-shift 8s ease infinite;
 }
+
+/* ─── Date Input Normalization ─── */
+.date-input {
+  min-height: 46px;
+}
+
+/* Normalize date input appearance for Chrome/Edge */
+input[type="month"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7);
+  cursor: pointer;
+}
+
+input[type="month"] {
+  appearance: none;
+  -webkit-appearance: none;
+}

@@ -23,7 +23,7 @@ from django.shortcuts import get_object_or_404
 
 from .models import AnalysisResult
 from .serializers import AnalysisResultSerializer, CompareJDRequestSerializer
-from .services.gemini_service import analyze_resume, compare_with_job_description
+from .services.gemini_service import analyze_resume, compare_with_job_description, validate_is_resume
 from .services.resume_parser import extract_text_from_file, resume_to_text
 from resumes.models import Resume
 
@@ -98,6 +98,19 @@ class AnalyzeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Task 7: Validate that the document is actually a resume/CV
+        try:
+            is_resume_result = validate_is_resume(resume_text)
+            if not is_resume_result.get('isResume', True):
+                reason = is_resume_result.get('reason', 'The uploaded document does not appear to be a resume or CV.')
+                return Response(
+                    {'error': f'This doesn\'t look like a resume. {reason} Please upload your resume or CV.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception:
+            # If validation fails, continue with the analysis anyway
+            pass
+
         # Call Claude AI to analyze the resume
         try:
             analysis_result = analyze_resume(resume_text)
@@ -128,6 +141,7 @@ class AnalyzeView(APIView):
             'id': str(analysis.id),
             'resumeId': str(resume_id) if resume_id else None,
             **analysis_result,
+            'resumeText': resume_text,
             'createdAt': analysis.created_at.isoformat()
         }
 
@@ -138,35 +152,73 @@ class CompareJDView(APIView):
     """
     POST /api/analysis/compare-jd/
 
-    Compares a saved resume against a job description.
+    Compares a resume against a job description.
+    Accepts either:
+    - A file upload (PDF/DOCX) + jobDescription
+    - A resumeId + jobDescription (for saved resumes)
     Returns a match score and tailored suggestions.
     """
 
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request):
-        serializer = CompareJDRequestSerializer(data=request.data)
+        resume_text = None
+        resume_id = None
+        file_name = ''
 
-        if not serializer.is_valid():
+        # Get job description from request
+        job_description = request.data.get('jobDescription', '')
+        if not job_description or len(job_description.strip()) < 50:
             return Response(
-                {'errors': serializer.errors},
+                {'error': 'Job description must be at least 50 characters.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        resume_id = serializer.validated_data['resumeId']
-        job_description = serializer.validated_data['jobDescription']
+        # Option 1: File upload
+        if 'file' in request.FILES:
+            uploaded_file = request.FILES['file']
+            file_name = uploaded_file.name
 
-        # Get the resume and convert to text
-        resume = get_object_or_404(Resume, id=resume_id, user=request.user)
-        resume_text = resume_to_text(resume)
+            # Validate file type
+            allowed_types = ['.pdf', '.docx']
+            if not any(file_name.lower().endswith(ext) for ext in allowed_types):
+                return Response(
+                    {'error': 'Only PDF and DOCX files are supported.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-        if not resume_text.strip():
+            # Extract text from the uploaded file
+            try:
+                file_content = uploaded_file.read()
+                resume_text = extract_text_from_file(file_content, file_name)
+            except ValueError as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # Option 2: Use a saved resume
+        elif request.data.get('resumeId'):
+            resume_id = request.data['resumeId']
+            resume = get_object_or_404(
+                Resume, id=resume_id, user=request.user
+            )
+            resume_text = resume_to_text(resume)
+
+        else:
             return Response(
-                {'error': 'Resume has no content to compare'},
+                {'error': 'Please upload a file or select a saved resume.'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Call Claude AI for comparison
+        if not resume_text or not resume_text.strip():
+            return Response(
+                {'error': 'Resume has no content to compare.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Call AI for comparison
         try:
             comparison_result = compare_with_job_description(
                 resume_text, job_description
@@ -190,6 +242,7 @@ class CompareJDView(APIView):
             ats_score=comparison_result.get('matchScore', 0),
             result=comparison_result,
             job_description=job_description,
+            file_name=file_name,
             resume_text=resume_text
         )
 
