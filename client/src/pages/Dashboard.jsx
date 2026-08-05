@@ -233,7 +233,17 @@ export default function Dashboard() {
         ) : (
           <div className="space-y-3">
             {analyses.slice(0, 5).map((analysis) => (
-              <div key={analysis.id} className="glass-card p-4 flex items-center justify-between">
+              <Link
+                key={analysis.id}
+                to={analysis.analysis_type === 'jd_comparison' ? '/compare' : '/analyzer'}
+                state={{
+                  historyResult: {
+                    ...analysis.result,
+                    resumeText: analysis.resume_text
+                  }
+                }}
+                className="glass-card p-4 flex items-center justify-between hover:border-primary-500/50 transition-all cursor-pointer group"
+              >
                 <div className="flex items-center gap-4">
                   <div className={`score-badge text-lg w-12 h-12 rounded-xl ${
                     getScoreColor(analysis.ats_score)
@@ -241,7 +251,7 @@ export default function Dashboard() {
                     {analysis.ats_score}
                   </div>
                   <div>
-                    <p className="font-medium text-gray-200">
+                    <p className="font-medium text-gray-200 group-hover:text-primary-300 transition-colors">
                       {analysis.analysis_type === 'jd_comparison' ? 'JD Comparison' : 'Resume Analysis'}
                     </p>
                     <p className="text-xs text-gray-500">
@@ -250,12 +260,15 @@ export default function Dashboard() {
                     </p>
                   </div>
                 </div>
-                <span className={`text-sm font-medium px-3 py-1 rounded-lg ${
-                  getScoreColor(analysis.ats_score)
-                }`}>
-                  {analysis.ats_score}%
-                </span>
-              </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-medium px-3 py-1 rounded-lg ${
+                    getScoreColor(analysis.ats_score)
+                  }`}>
+                    {analysis.ats_score}%
+                  </span>
+                  <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-primary-400 group-hover:translate-x-0.5 transition-all" />
+                </div>
+              </Link>
             ))}
           </div>
         )}

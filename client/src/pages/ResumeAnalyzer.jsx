@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useLocation } from 'react-router-dom';
 import { analyzeResume } from '../api/analysis';
 import { getResumes } from '../api/resumes';
 import toast from 'react-hot-toast';
@@ -28,13 +28,14 @@ import {
 
 export default function ResumeAnalyzer() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const preselectedId = searchParams.get('resumeId');
 
   const [file, setFile] = useState(null);
   const [selectedResumeId, setSelectedResumeId] = useState(preselectedId || '');
   const [resumes, setResumes] = useState([]);
   const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(location.state?.historyResult || null);
   const [expandedSections, setExpandedSections] = useState({});
 
   // Task 5: Track applied suggestions
@@ -42,7 +43,7 @@ export default function ResumeAnalyzer() {
 
   // Task 6: Editing panel
   const [showEditPanel, setShowEditPanel] = useState(false);
-  const [editedText, setEditedText] = useState('');
+  const [editedText, setEditedText] = useState(location.state?.historyResult?.resumeText || '');
 
   // Load saved resumes for the dropdown
   useEffect(() => {

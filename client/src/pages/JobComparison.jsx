@@ -11,6 +11,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { getResumes } from '../api/resumes';
 import { compareJobDescription } from '../api/analysis';
 import toast from 'react-hot-toast';
@@ -21,12 +22,13 @@ import {
 } from 'lucide-react';
 
 export default function JobComparison() {
+  const location = useLocation();
   const [resumes, setResumes] = useState([]);
   const [selectedResumeId, setSelectedResumeId] = useState('');
   const [file, setFile] = useState(null);
   const [jobDescription, setJobDescription] = useState('');
   const [comparing, setComparing] = useState(false);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState(location.state?.historyResult || null);
 
   useEffect(() => {
     async function loadResumes() {

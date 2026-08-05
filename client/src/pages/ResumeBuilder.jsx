@@ -78,7 +78,7 @@ export default function ResumeBuilder() {
       const response = await getResume(id);
       const data = response.data;
       setTitle(data.title || 'Untitled Resume');
-      setPersonalInfo(data.personal_info || {});
+      setPersonalInfo(data.personal_info || data.personalInfo || {});
       setSummary(data.summary || '');
       setExperience(data.experience?.length ? data.experience : [{ ...EMPTY_EXPERIENCE }]);
       setEducation(data.education?.length ? data.education : [{ ...EMPTY_EDUCATION }]);

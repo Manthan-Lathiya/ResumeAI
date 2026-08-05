@@ -63,10 +63,10 @@ router.get('/:id', async (req, res, next) => {
  * PUT /api/resumes/:id
  * Update a specific resume.
  */
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', validate(resumeSchema), async (req, res, next) => {
   try {
     const result = await forwardToDjango('PUT', `/api/resumes/${req.params.id}/`, {
-      data: req.body,
+      data: req.validatedBody,
       headers: { authorization: req.headers.authorization },
     });
     res.status(result.status).json(result.data);
