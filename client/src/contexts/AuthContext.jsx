@@ -124,7 +124,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('refreshToken');
       setUser(null);
       toast.success('Logged out');
-      navigate('/login');
+      navigate('/');
     }
   }
 

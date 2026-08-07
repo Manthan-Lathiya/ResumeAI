@@ -7,11 +7,40 @@
 
 const express = require('express');
 const router = express.Router();
-const { forwardToDjango } = require('../proxy/djangoProxy');
+const FormData = require('form-data');
+const { forwardToDjango, forwardFileToDjango } = require('../proxy/djangoProxy');
 const { resumeSchema, validate } = require('../validators/resumeValidator');
 const { generalLimiter } = require('../middleware/rateLimiter');
+const { upload } = require('../middleware/upload');
 
 router.use(generalLimiter);
+
+/**
+ * POST /api/resumes/upload
+ * Upload a raw resume (PDF/DOCX)
+ */
+router.post('/upload', upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Please upload a file' });
+    }
+
+    const formData = new FormData();
+    formData.append('file', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
+
+    const result = await forwardFileToDjango(
+      '/api/resumes/upload/',
+      formData,
+      { authorization: req.headers.authorization }
+    );
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * GET /api/resumes

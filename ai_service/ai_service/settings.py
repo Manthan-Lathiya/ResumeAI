@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     'users',                         # User authentication
     'resumes',                       # Resume CRUD operations
     'analysis',                      # AI-powered resume analysis
+    'cover_letters',                 # Cover Letter generator & CRUD
 ]
 
 # ──────────────────────────────────────────────

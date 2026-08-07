@@ -32,6 +32,7 @@ class ResumeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'title', 'personal_info', 'summary',
             'experience', 'education', 'skills', 'projects',
+            'template_id', 'theme_color',
             'status', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']

@@ -15,6 +15,8 @@ import {
   LayoutDashboard,
   LogOut,
   Sparkles,
+  Layout,
+  Mail,
   Menu,
   X
 } from 'lucide-react';
@@ -25,13 +27,19 @@ export default function Navbar() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Navigation links for authenticated users
+  // Navigation links
   const navLinks = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { path: '/builder', label: 'Builder', icon: FileText },
     { path: '/analyzer', label: 'Analyzer', icon: BarChart3 },
     { path: '/compare', label: 'JD Match', icon: GitCompare },
+    { path: '/cover-letter', label: 'Cover Letter', icon: Mail },
+    { path: '/templates', label: 'Templates', icon: Layout },
+    { path: '/examples', label: 'Examples', icon: Sparkles },
   ];
+
+  // Publicly accessible pages
+  const publicPaths = ['/templates', '/examples'];
 
   // Check if a nav link is currently active
   const isActive = (path) => location.pathname === path;
@@ -50,25 +58,23 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          {isAuthenticated && (
-            <div className="hidden md:flex items-center gap-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
-                    transition-all duration-300
-                    ${isActive(link.path)
-                      ? 'bg-primary-500/20 text-primary-300 shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                    }`}
-                >
-                  <link.icon className="w-4 h-4" />
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          )}
+          <div className="hidden md:flex items-center gap-1">
+            {(isAuthenticated ? navLinks : navLinks.filter(l => publicPaths.includes(l.path))).map((link) => (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium
+                  transition-all duration-300
+                  ${isActive(link.path)
+                    ? 'bg-primary-500/20 text-primary-300 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                  }`}
+              >
+                <link.icon className="w-4 h-4" />
+                {link.label}
+              </Link>
+            ))}
+          </div>
 
           {/* Right side — User info / Auth buttons */}
           <div className="hidden md:flex items-center gap-4">

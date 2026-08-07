@@ -19,6 +19,9 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const resumeRoutes = require('./routes/resumes');
 const analysisRoutes = require('./routes/analysis');
+const coverLetterRoutes = require('./routes/coverLetters');
+const interviewRoutes = require('./routes/interview');
+const tailorRoutes = require('./routes/tailor');
 
 // Import error handling middleware
 const { errorHandler } = require('./middleware/errorHandler');
@@ -66,6 +69,15 @@ app.use('/api/resumes', resumeRoutes);
 
 // Analysis routes: /api/analysis/analyze, /api/analysis/compare-jd
 app.use('/api/analysis', analysisRoutes);
+
+// Cover Letter routes: /api/cover-letters
+app.use('/api/cover-letters', coverLetterRoutes);
+
+// Interview routes: /api/interview/generate
+app.use('/api/interview', interviewRoutes);
+
+// Tailor routes: /api/tailor/generate
+app.use('/api/tailor', tailorRoutes);
 
 // ──────────────────────────────────────────────
 // ERROR HANDLING (must be LAST)

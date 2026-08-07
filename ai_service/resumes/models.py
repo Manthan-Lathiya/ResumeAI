@@ -73,12 +73,20 @@ class Resume(models.Model):
     #    "technologies": ["Go", "Docker"], "link": "..." }]
     projects = models.JSONField(default=list, blank=True)
 
+    # Template and Styling
+    template_id = models.CharField(max_length=50, default='classic', blank=True)
+    theme_color = models.CharField(max_length=20, default='#2563eb', blank=True)
+
     # Resume status
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
         default='draft'
     )
+
+    # For uploaded resumes
+    is_uploaded = models.BooleanField(default=False)
+    resume_text = models.TextField(blank=True, default='')
 
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)

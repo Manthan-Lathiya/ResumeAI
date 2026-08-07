@@ -18,4 +18,5 @@ urlpatterns = [
     path('api/users/', include('users.urls')),
     path('api/resumes/', include('resumes.urls')),
     path('api/analysis/', include('analysis.urls')),
+    path('api/cover-letters/', include('cover_letters.urls')),
 ]

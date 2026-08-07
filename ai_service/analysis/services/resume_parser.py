@@ -118,6 +118,9 @@ def resume_to_text(resume):
     Returns:
         str: Formatted resume text
     """
+    if getattr(resume, 'is_uploaded', False) and getattr(resume, 'resume_text', ''):
+        return resume.resume_text
+
     lines = []
 
     # Personal Info

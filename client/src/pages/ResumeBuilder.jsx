@@ -10,12 +10,14 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createResume, updateResume, getResume } from '../api/resumes';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../api/axios';
+import ResumePreview from '../components/ResumePreview';
+import { TEMPLATES, COLOR_PRESETS } from '../templates/registry';
 import {
-  User, Briefcase, GraduationCap, Code, FolderOpen, FileText,
+  User, Briefcase, GraduationCap, Code, FolderOpen, FileText, Palette, Check,
   Plus, Trash2, Save, Eye, EyeOff, ChevronRight, CheckCircle, Download
 } from 'lucide-react';
 
@@ -27,6 +29,7 @@ const SECTIONS = [
   { id: 'education', label: 'Education', icon: GraduationCap },
   { id: 'skills', label: 'Skills', icon: Code },
   { id: 'projects', label: 'Projects', icon: FolderOpen },
+  { id: 'template', label: 'Design & Colors', icon: Palette },
 ];
 
 // ─── Empty templates for adding new items ───
@@ -44,8 +47,9 @@ const EMPTY_PROJECT = {
 };
 
 export default function ResumeBuilder() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get('id');  // If editing existing resume
+  const editId = searchParams.get('id') || searchParams.get('resumeId'); // If editing existing resume
 
   // Form state
   const [title, setTitle] = useState('Untitled Resume');
@@ -53,6 +57,11 @@ export default function ResumeBuilder() {
   const [showPreview, setShowPreview] = useState(true);
   const [saving, setSaving] = useState(false);
   const [resumeId, setResumeId] = useState(editId);
+  const [errors, setErrors] = useState({});
+
+  // Template & Styling state
+  const [templateId, setTemplateId] = useState('classic');
+  const [themeColor, setThemeColor] = useState('#2563eb');
 
   // Resume data
   const [personalInfo, setPersonalInfo] = useState({
@@ -77,20 +86,77 @@ export default function ResumeBuilder() {
     try {
       const response = await getResume(id);
       const data = response.data;
+      setResumeId(id);
       setTitle(data.title || 'Untitled Resume');
+      setTemplateId(data.template_id || data.templateId || 'classic');
+      setThemeColor(data.theme_color || data.themeColor || '#2563eb');
       setPersonalInfo(data.personal_info || data.personalInfo || {});
       setSummary(data.summary || '');
-      setExperience(data.experience?.length ? data.experience : [{ ...EMPTY_EXPERIENCE }]);
-      setEducation(data.education?.length ? data.education : [{ ...EMPTY_EDUCATION }]);
+      const normalizeExperience = (expArray) => {
+        if (!expArray || !expArray.length) return [{ ...EMPTY_EXPERIENCE }];
+        return expArray.map(exp => ({
+          ...exp,
+          bullets: exp.bullets || (exp.description ? [exp.description] : ['']),
+        }));
+      };
+
+      const normalizeEducation = (eduArray) => {
+        if (!eduArray || !eduArray.length) return [{ ...EMPTY_EDUCATION }];
+        return eduArray.map(edu => ({
+          ...edu,
+          startDate: edu.startDate || '',
+          endDate: edu.endDate || edu.graduationDate || '',
+          gpa: edu.gpa || '',
+        }));
+      };
+
+      const normalizeProjects = (projArray) => {
+        if (!projArray || !projArray.length) return [{ ...EMPTY_PROJECT }];
+        return projArray.map(proj => ({
+          ...proj,
+          technologies: proj.technologies || [],
+        }));
+      };
+
+      setExperience(normalizeExperience(data.experience));
+      setEducation(normalizeEducation(data.education));
       setSkills(data.skills || []);
-      setProjects(data.projects?.length ? data.projects : [{ ...EMPTY_PROJECT }]);
+      setProjects(normalizeProjects(data.projects));
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to load resume. Please try again.'));
     }
   }
 
+  function validateForm() {
+    const newErrors = {};
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^\+?[\d\s\-\(\)]{10,20}$/;
+    
+    if (personalInfo.email && !emailRegex.test(personalInfo.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    if (personalInfo.phone && !phoneRegex.test(personalInfo.phone)) {
+      newErrors.phone = 'Please enter a valid phone number';
+    }
+    if (personalInfo.linkedin && !personalInfo.linkedin.toLowerCase().includes('linkedin.com')) {
+      newErrors.linkedin = 'Must be a valid LinkedIn URL';
+    }
+    if (personalInfo.website && !personalInfo.website.includes('.')) {
+      newErrors.website = 'Must be a valid website URL';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }
+
   // Save resume
   async function handleSave(status = 'draft') {
+    if (!validateForm()) {
+      toast.error('Please fix the errors in your personal info before saving.');
+      setActiveSection('personal');
+      return;
+    }
+
     setSaving(true);
     const data = {
       title,
@@ -100,6 +166,8 @@ export default function ResumeBuilder() {
       education: education.filter(e => e.institution || e.degree),
       skills,
       projects: projects.filter(p => p.name),
+      templateId,
+      themeColor,
       status,
     };
 
@@ -112,6 +180,7 @@ export default function ResumeBuilder() {
         setResumeId(response.data.id);
         toast.success('Resume created!');
       }
+      navigate('/dashboard');
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to save resume. Please try again.'));
     } finally {
@@ -312,10 +381,14 @@ export default function ResumeBuilder() {
                 <input
                   type={type || 'text'}
                   value={personalInfo[key] || ''}
-                  onChange={(e) => setPersonalInfo({ ...personalInfo, [key]: e.target.value })}
+                  onChange={(e) => {
+                    setPersonalInfo({ ...personalInfo, [key]: e.target.value });
+                    if (errors[key]) setErrors({ ...errors, [key]: null });
+                  }}
                   placeholder={placeholder}
-                  className="input-field"
+                  className={`input-field ${errors[key] ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
+                {errors[key] && <p className="text-red-400 text-xs mt-1">{errors[key]}</p>}
               </div>
             ))}
           </div>
@@ -578,6 +651,87 @@ export default function ResumeBuilder() {
           </div>
         );
 
+      case 'template':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-100 mb-1">Choose Template</h3>
+              <p className="text-xs text-gray-400">Select a layout that matches your target role and industry.</p>
+            </div>
+
+            {/* Template Selection Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {TEMPLATES.map((tmpl) => {
+                const isSelected = templateId === tmpl.id;
+                return (
+                  <div
+                    key={tmpl.id}
+                    onClick={() => {
+                      setTemplateId(tmpl.id);
+                      if (!themeColor) setThemeColor(tmpl.defaultColor);
+                    }}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 relative ${
+                      isSelected
+                        ? 'bg-primary-500/10 border-primary-500 shadow-lg shadow-primary-500/10 ring-2 ring-primary-500/50'
+                        : 'glass-card border-gray-800 hover:border-gray-700 hover:bg-gray-800/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-800 text-gray-300">
+                        {tmpl.tag}
+                      </span>
+                      {isSelected && (
+                        <span className="flex items-center gap-1 text-xs font-bold text-primary-400">
+                          <Check className="w-4 h-4" /> Active
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-bold text-gray-100 mb-1">{tmpl.name}</h4>
+                    <p className="text-xs text-gray-400 leading-relaxed">{tmpl.description}</p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Color Palette Switcher */}
+            <div className="pt-4 border-t border-gray-800">
+              <h3 className="text-sm font-semibold text-gray-100 mb-1">Theme Color Palette</h3>
+              <p className="text-xs text-gray-400 mb-4">Pick an accent color for section headings and dividers.</p>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {COLOR_PRESETS.map((preset) => {
+                  const isColorActive = themeColor.toLowerCase() === preset.hex.toLowerCase();
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => setThemeColor(preset.hex)}
+                      title={preset.name}
+                      className={`w-9 h-9 rounded-full transition-all duration-300 flex items-center justify-center relative ${
+                        isColorActive ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110' : 'hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: preset.hex }}
+                    >
+                      {isColorActive && <Check className="w-5 h-5 text-white stroke-[3]" />}
+                    </button>
+                  );
+                })}
+
+                {/* Custom Color Input */}
+                <div className="flex items-center gap-2 ml-2 pl-3 border-l border-gray-800">
+                  <input
+                    type="color"
+                    value={themeColor}
+                    onChange={(e) => setThemeColor(e.target.value)}
+                    className="w-8 h-8 rounded border-0 cursor-pointer bg-transparent"
+                    title="Custom Color Picker"
+                  />
+                  <span className="text-xs text-gray-400 font-mono">{themeColor}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -585,114 +739,19 @@ export default function ResumeBuilder() {
 
   // ─── Live Preview ───
   function renderPreview() {
-    return (
-      <div className="bg-white text-gray-900 p-8 rounded-xl shadow-2xl max-h-[calc(100vh-200px)] 
-                    overflow-y-auto text-sm leading-relaxed">
-        {/* Header */}
-        <div className="text-center border-b-2 border-gray-200 pb-4 mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            {personalInfo.fullName || 'Your Name'}
-          </h1>
-          <div className="flex items-center justify-center gap-3 mt-2 text-gray-600 text-xs flex-wrap">
-            {personalInfo.email && <span>{personalInfo.email}</span>}
-            {personalInfo.phone && <span>• {personalInfo.phone}</span>}
-            {personalInfo.location && <span>• {personalInfo.location}</span>}
-          </div>
-          <div className="flex items-center justify-center gap-3 mt-1 text-gray-500 text-xs flex-wrap">
-            {personalInfo.linkedin && <span>{personalInfo.linkedin}</span>}
-            {personalInfo.website && <span>• {personalInfo.website}</span>}
-          </div>
-        </div>
+    // Construct the resume object from state to pass to ResumePreview
+    const resumeData = {
+      personalInfo,
+      summary,
+      experience,
+      education,
+      skills,
+      projects,
+      templateId,
+      themeColor
+    };
 
-        {/* Summary */}
-        {summary && (
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-2">
-              Professional Summary
-            </h2>
-            <p className="text-gray-700">{summary}</p>
-          </div>
-        )}
-
-        {/* Experience */}
-        {experience.some(e => e.company || e.title) && (
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-2">
-              Experience
-            </h2>
-            {experience.filter(e => e.company || e.title).map((exp, i) => (
-              <div key={i} className="mb-3">
-                <div className="flex justify-between items-baseline">
-                  <strong className="text-gray-900">{exp.title || 'Job Title'}</strong>
-                  <span className="text-xs text-gray-500">
-                    {exp.startDate} – {exp.current ? 'Present' : exp.endDate}
-                  </span>
-                </div>
-                <div className="text-gray-600 text-xs">
-                  {exp.company}{exp.location && ` • ${exp.location}`}
-                </div>
-                {exp.bullets?.filter(Boolean).length > 0 && (
-                  <ul className="list-disc list-inside mt-1 text-gray-700 space-y-0.5">
-                    {exp.bullets.filter(Boolean).map((b, bi) => (
-                      <li key={bi}>{b}</li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Education */}
-        {education.some(e => e.institution || e.degree) && (
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-2">
-              Education
-            </h2>
-            {education.filter(e => e.institution || e.degree).map((edu, i) => (
-              <div key={i} className="mb-2">
-                <div className="flex justify-between items-baseline">
-                  <strong className="text-gray-900">{edu.degree || 'Degree'}</strong>
-                  <span className="text-xs text-gray-500">{edu.startDate} – {edu.endDate}</span>
-                </div>
-                <div className="text-gray-600 text-xs">
-                  {edu.institution}{edu.gpa && ` • GPA: ${edu.gpa}`}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Skills */}
-        {skills.length > 0 && (
-          <div className="mb-4">
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-2">
-              Skills
-            </h2>
-            <p className="text-gray-700">{skills.join(' • ')}</p>
-          </div>
-        )}
-
-        {/* Projects */}
-        {projects.some(p => p.name) && (
-          <div>
-            <h2 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-300 pb-1 mb-2">
-              Projects
-            </h2>
-            {projects.filter(p => p.name).map((proj, i) => (
-              <div key={i} className="mb-2">
-                <strong className="text-gray-900">{proj.name}</strong>
-                {proj.link && <span className="text-xs text-blue-600 ml-2">{proj.link}</span>}
-                {proj.description && <p className="text-gray-700 text-xs mt-0.5">{proj.description}</p>}
-                {proj.technologies?.length > 0 && (
-                  <p className="text-xs text-gray-500 mt-0.5">Tech: {proj.technologies.join(', ')}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+    return <ResumePreview resume={resumeData} />;
   }
 
   return (

@@ -23,7 +23,7 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
-  // Not logged in — redirect to login
+  // Not logged in — redirect to login page
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }

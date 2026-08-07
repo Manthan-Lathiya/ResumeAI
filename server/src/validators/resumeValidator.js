@@ -51,6 +51,9 @@ const resumeSchema = z.object({
     link: z.string().optional().default(''),
   })).optional().default([]),
 
+  templateId: z.string().optional().default('classic'),
+  themeColor: z.string().optional().default('#2563eb'),
+
   status: z.enum(['draft', 'complete']).optional().default('draft'),
 }).transform((data) => ({
   // Convert camelCase (frontend) to snake_case (Django)
@@ -61,6 +64,8 @@ const resumeSchema = z.object({
   education: data.education,
   skills: data.skills,
   projects: data.projects,
+  template_id: data.templateId,
+  theme_color: data.themeColor,
   status: data.status,
 }));
 

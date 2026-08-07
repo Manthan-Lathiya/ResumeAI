@@ -29,6 +29,23 @@ def get_gemini_client():
     return genai.Client(api_key=api_key)
 
 
+def call_gemini_models(client, prompt):
+    """Helper to try supported Gemini models in sequence."""
+    models_to_try = ['gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-flash-latest']
+    for m_name in models_to_try:
+        try:
+            res = client.models.generate_content(
+                model=m_name,
+                contents=prompt
+            )
+            if res and res.text:
+                return res.text.strip()
+        except Exception as err:
+            print(f"Model {m_name} failed: {err}")
+            continue
+    raise RuntimeError("All Gemini API models failed.")
+
+
 def analyze_resume(resume_text):
     """
     Analyze a resume using Google Gemini AI.
@@ -99,14 +116,8 @@ IMPORTANT RULES:
 5. Suggest at least 3 specific improvements with before/after examples
 6. Return ONLY the JSON object, no other text"""
 
-    # Call Gemini API
-    response = client.models.generate_content(
-        model='gemini-3.5-flash',
-        contents=prompt,
-    )
-
-    # Extract the text response from Gemini
-    response_text = response.text.strip()
+    # Call Gemini API with dynamic model fallback
+    response_text = call_gemini_models(client, prompt)
 
     # Parse the JSON response
     # Sometimes Gemini wraps JSON in markdown code blocks, so we clean that up
@@ -187,12 +198,7 @@ IMPORTANT RULES:
 5. The matchScore should reflect actual keyword and experience alignment
 6. Return ONLY the JSON object, no other text"""
 
-    response = client.models.generate_content(
-        model='gemini-3.5-flash',
-        contents=prompt,
-    )
-
-    response_text = response.text.strip()
+    response_text = call_gemini_models(client, prompt)
 
     # Clean up markdown code blocks if present
     if response_text.startswith('```'):
@@ -249,12 +255,7 @@ Respond with ONLY a JSON object (no markdown, no code blocks):
     "reason": "Brief explanation if NOT a resume (1 sentence). Empty string if it IS a resume."
 }}"""
 
-    response = client.models.generate_content(
-        model='gemini-3.5-flash',
-        contents=prompt,
-    )
-
-    response_text = response.text.strip()
+    response_text = call_gemini_models(client, prompt)
 
     # Clean up markdown code blocks if present
     if response_text.startswith('```'):
@@ -267,5 +268,96 @@ Respond with ONLY a JSON object (no markdown, no code blocks):
     except json.JSONDecodeError:
         # If parsing fails, assume it's a resume (don't block the user)
         result = {'isResume': True, 'reason': ''}
+
+    return result
+
+
+def parse_resume_to_builder(resume_text):
+    """
+    Parse a raw resume text into the structured JSON format used by the Resume Builder.
+    
+    Args:
+        resume_text (str): The raw text extracted from a PDF/DOCX
+        
+    Returns:
+        dict: A dictionary containing personalInfo, summary, experience, education, skills, projects
+    """
+    client = get_gemini_client()
+
+    prompt = f"""You are a resume parsing AI. Extract the information from the following resume text and structure it exactly into the specified JSON format.
+
+RESUME TEXT:
+---
+{resume_text}
+---
+
+Provide your analysis as a JSON object with EXACTLY this structure (no markdown, no code blocks):
+{{
+    "personalInfo": {{
+        "fullName": "Extracted full name or empty string",
+        "email": "Extracted email or empty string",
+        "phone": "Extracted phone or empty string",
+        "location": "Extracted location/address or empty string",
+        "linkedin": "Extracted LinkedIn URL or empty string",
+        "website": "Extracted other website/portfolio or empty string"
+    }},
+    "summary": "Extracted professional summary or objective, or empty string",
+    "experience": [
+        {{
+            "company": "Company name",
+            "title": "Job title",
+            "location": "Job location or empty string",
+            "startDate": "Start date (e.g. Jan 2020) or empty string",
+            "endDate": "End date (e.g. Present) or empty string",
+            "current": false,
+            "bullets": [
+                "Bullet point 1",
+                "Bullet point 2"
+            ]
+        }}
+    ],
+    "education": [
+        {{
+            "institution": "University/School name",
+            "degree": "Degree name (e.g. B.S. Computer Science)",
+            "startDate": "Start date or empty string",
+            "endDate": "End date or empty string",
+            "gpa": "GPA or empty string"
+        }}
+    ],
+    "skills": ["skill 1", "skill 2"],
+    "projects": [
+        {{
+            "name": "Project name",
+            "description": "Project description",
+            "technologies": ["React", "Node.js"],
+            "link": "Project link or empty string"
+        }}
+    ]
+}}
+
+IMPORTANT RULES:
+1. If a section is missing from the resume, return an empty array [] or empty string "" as appropriate.
+2. Return ONLY the JSON object, no other text."""
+
+    response_text = call_gemini_models(client, prompt)
+
+    if response_text.startswith('```'):
+        response_text = response_text.split('\n', 1)[1]
+        response_text = response_text.rsplit('```', 1)[0]
+        response_text = response_text.strip()
+
+    try:
+        result = json.loads(response_text)
+    except json.JSONDecodeError:
+        # Fallback empty structure
+        result = {
+            "personalInfo": {"fullName": "", "email": "", "phone": "", "location": "", "linkedin": "", "website": ""},
+            "summary": "",
+            "experience": [],
+            "education": [],
+            "skills": [],
+            "projects": []
+        }
 
     return result

@@ -3,7 +3,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Global Styles ─── */
+/* ─── Global Styles (Pure Dark Theme) ─── */
 @layer base {
   body {
     @apply bg-gray-950 text-gray-100 font-sans;
@@ -14,7 +14,7 @@
     scroll-behavior: smooth;
   }
 
-  /* Custom scrollbar (dark theme) */
+  /* Custom scrollbars */
   ::-webkit-scrollbar {
     width: 8px;
   }
@@ -59,46 +59,18 @@
 
   /* Form input */
   .input-field {
-    @apply w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl
-           text-gray-100 placeholder-gray-500
-           focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
-           transition-all duration-300;
+    @apply w-full px-4 py-3 bg-gray-900/80 border border-gray-800 rounded-xl
+           text-gray-100 placeholder-gray-500 focus:outline-none focus:border-primary-500
+           focus:ring-1 focus:ring-primary-500 transition-all duration-300;
   }
 
-  /* Form label */
+  /* Input label */
   .input-label {
-    @apply block text-sm font-medium text-gray-300 mb-2;
+    @apply block text-sm font-medium text-gray-300 mb-1.5;
   }
 
-  /* Score badge */
-  .score-badge {
-    @apply inline-flex items-center justify-center w-16 h-16 rounded-2xl font-bold text-2xl;
+  /* Badge */
+  .badge-primary {
+    @apply px-3 py-1 bg-primary-500/10 text-primary-400 rounded-full text-xs font-medium border border-primary-500/20;
   }
-}
-
-/* ─── Gradient Background Animation ─── */
-@keyframes gradient-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
-.animated-gradient {
-  background-size: 200% 200%;
-  animation: gradient-shift 8s ease infinite;
-}
-
-/* ─── Date Input Normalization ─── */
-.date-input {
-  min-height: 46px;
-}
-
-/* Normalize date input appearance for Chrome/Edge */
-input[type="month"]::-webkit-calendar-picker-indicator {
-  filter: invert(0.7);
-  cursor: pointer;
-}
-
-input[type="month"] {
-  appearance: none;
-  -webkit-appearance: none;
 }

@@ -23,9 +23,10 @@ from django.shortcuts import get_object_or_404
 
 from .models import AnalysisResult
 from .serializers import AnalysisResultSerializer, CompareJDRequestSerializer
-from .services.gemini_service import analyze_resume, compare_with_job_description, validate_is_resume
+from .services.gemini_service import analyze_resume, compare_with_job_description, validate_is_resume, parse_resume_to_builder
 from .services.resume_parser import extract_text_from_file, resume_to_text
 from resumes.models import Resume
+from resumes.serializers import ResumeSerializer
 
 
 class AnalyzeView(APIView):
@@ -46,6 +47,7 @@ class AnalyzeView(APIView):
         resume_text = None
         resume_id = None
         file_name = ''
+        resume_data = None
 
         # Option 1: File upload
         if 'file' in request.FILES:
@@ -71,6 +73,36 @@ class AnalyzeView(APIView):
             try:
                 file_content = uploaded_file.read()
                 resume_text = extract_text_from_file(file_content, file_name)
+                
+                # Check if it's a valid resume
+                is_resume_result = validate_is_resume(resume_text)
+                if not is_resume_result.get('isResume', True):
+                    reason = is_resume_result.get('reason', 'The uploaded document does not appear to be a resume.')
+                    return Response(
+                        {'error': f'This doesn\'t look like a resume. {reason}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Parse and save as a native Resume object
+                resume_data = parse_resume_to_builder(resume_text)
+                clean_title = file_name.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
+                if len(clean_title) > 50 or not clean_title:
+                    clean_title = 'Uploaded Resume'
+
+                resume = Resume.objects.create(
+                    user=request.user,
+                    title=clean_title,
+                    is_uploaded=True,
+                    resume_text=resume_text,
+                    personal_info=resume_data.get('personalInfo', {}),
+                    summary=resume_data.get('summary', ''),
+                    experience=resume_data.get('experience', []),
+                    education=resume_data.get('education', []),
+                    skills=resume_data.get('skills', []),
+                    projects=resume_data.get('projects', []),
+                    status='complete'
+                )
+                resume_id = str(resume.id)
             except ValueError as e:
                 return Response(
                     {'error': str(e)},
@@ -84,6 +116,18 @@ class AnalyzeView(APIView):
                 Resume, id=resume_id, user=request.user
             )
             resume_text = resume_to_text(resume)
+            
+            # Serialize the saved resume to builder format
+            serializer = ResumeSerializer(resume)
+            data = serializer.data
+            resume_data = {
+                'personalInfo': data.get('personal_info', {}),
+                'summary': data.get('summary', ''),
+                'experience': data.get('experience', []),
+                'education': data.get('education', []),
+                'skills': data.get('skills', []),
+                'projects': data.get('projects', [])
+            }
 
         else:
             return Response(
@@ -98,22 +142,16 @@ class AnalyzeView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Task 7: Validate that the document is actually a resume/CV
-        try:
-            is_resume_result = validate_is_resume(resume_text)
-            if not is_resume_result.get('isResume', True):
-                reason = is_resume_result.get('reason', 'The uploaded document does not appear to be a resume or CV.')
-                return Response(
-                    {'error': f'This doesn\'t look like a resume. {reason} Please upload your resume or CV.'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        except Exception:
-            # If validation fails, continue with the analysis anyway
-            pass
+        # Validation was already handled during upload or it's a saved resume
 
         # Call Claude AI to analyze the resume
         try:
             analysis_result = analyze_resume(resume_text)
+            # If we don't have resume_data (e.g., from file upload), parse it now
+            if not resume_data:
+                resume_data = parse_resume_to_builder(resume_text)
+            # Embed it in the result
+            analysis_result['resumeData'] = resume_data
         except ValueError as e:
             return Response(
                 {'error': str(e)},
@@ -166,6 +204,7 @@ class CompareJDView(APIView):
         resume_text = None
         resume_id = None
         file_name = ''
+        resume_data = None
 
         # Get job description from request
         job_description = request.data.get('jobDescription', '')
@@ -192,6 +231,32 @@ class CompareJDView(APIView):
             try:
                 file_content = uploaded_file.read()
                 resume_text = extract_text_from_file(file_content, file_name)
+                
+                # Check if it's a valid resume
+                is_resume_result = validate_is_resume(resume_text)
+                if not is_resume_result.get('isResume', True):
+                    reason = is_resume_result.get('reason', 'The uploaded document does not appear to be a resume.')
+                    return Response(
+                        {'error': f'This doesn\'t look like a resume. {reason}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                # Parse and save as a native Resume object
+                resume_data = parse_resume_to_builder(resume_text)
+                resume = Resume.objects.create(
+                    user=request.user,
+                    title=file_name,
+                    is_uploaded=True,
+                    resume_text=resume_text,
+                    personal_info=resume_data.get('personalInfo', {}),
+                    summary=resume_data.get('summary', ''),
+                    experience=resume_data.get('experience', []),
+                    education=resume_data.get('education', []),
+                    skills=resume_data.get('skills', []),
+                    projects=resume_data.get('projects', []),
+                    status='complete'
+                )
+                resume_id = str(resume.id)
             except ValueError as e:
                 return Response(
                     {'error': str(e)},
@@ -205,6 +270,18 @@ class CompareJDView(APIView):
                 Resume, id=resume_id, user=request.user
             )
             resume_text = resume_to_text(resume)
+            
+            # Serialize the saved resume to builder format
+            serializer = ResumeSerializer(resume)
+            data = serializer.data
+            resume_data = {
+                'personalInfo': data.get('personal_info', {}),
+                'summary': data.get('summary', ''),
+                'experience': data.get('experience', []),
+                'education': data.get('education', []),
+                'skills': data.get('skills', []),
+                'projects': data.get('projects', [])
+            }
 
         else:
             return Response(
@@ -223,6 +300,11 @@ class CompareJDView(APIView):
             comparison_result = compare_with_job_description(
                 resume_text, job_description
             )
+            # If we don't have resume_data (e.g., from file upload), parse it now
+            if not resume_data:
+                resume_data = parse_resume_to_builder(resume_text)
+            # Embed it in the result
+            comparison_result['resumeData'] = resume_data
         except ValueError as e:
             return Response(
                 {'error': str(e)},
@@ -249,6 +331,8 @@ class CompareJDView(APIView):
         response_data = {
             'id': str(analysis.id),
             **comparison_result,
+            'jobDescription': job_description,
+            'resumeText': resume_text,
             'createdAt': analysis.created_at.isoformat()
         }
 

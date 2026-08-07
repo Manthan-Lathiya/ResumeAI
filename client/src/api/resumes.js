@@ -23,3 +23,12 @@ export const updateResume = (id, data) =>
 // Delete a resume
 export const deleteResume = (id) =>
   api.delete(`/resumes/${id}`);
+
+// Upload a raw resume file
+export const uploadResume = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return api.post('/resumes/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+};
