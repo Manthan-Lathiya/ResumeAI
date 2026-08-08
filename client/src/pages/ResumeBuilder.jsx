@@ -209,7 +209,7 @@ export default function ResumeBuilder() {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^\+?[\d\s\-\(\)]{10,20}$/;
-    
+
     if (personalInfo.email && !emailRegex.test(personalInfo.email)) {
       newErrors.email = 'Please enter a valid email address';
     }
@@ -281,6 +281,13 @@ export default function ResumeBuilder() {
       return;
     }
 
+    const linkedinUrl = personalInfo.linkedin
+      ? (personalInfo.linkedin.startsWith('http') ? personalInfo.linkedin : `https://${personalInfo.linkedin.trim()}`)
+      : '';
+    const linkedinLink = linkedinUrl
+      ? `<a href="${linkedinUrl}" target="_blank">${personalInfo.linkedin}</a>`
+      : '';
+
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -329,7 +336,7 @@ export default function ResumeBuilder() {
             <div class="contact">
               ${[personalInfo.email, personalInfo.phone, personalInfo.location].filter(Boolean).join(' • ')}
             </div>
-            ${(personalInfo.linkedin || personalInfo.website) ? `<div class="contact">${[personalInfo.linkedin, personalInfo.website].filter(Boolean).join(' • ')}</div>` : ''}
+            ${(personalInfo.linkedin || personalInfo.website) ? `<div class="contact">${[linkedinLink, personalInfo.website].filter(Boolean).join(' • ')}</div>` : ''}
           </div>
 
           ${summary ? `<div class="section-title">Professional Summary</div><p style="font-size:10.5pt;color:#333;">${summary}</p>` : ''}
@@ -531,36 +538,36 @@ export default function ResumeBuilder() {
                   <div>
                     <label className="input-label text-xs">Job Title</label>
                     <input value={exp.title} onChange={(e) => updateExperience(i, 'title', e.target.value)}
-                           placeholder="Software Engineer" className="input-field text-sm" />
+                      placeholder="Software Engineer" className="input-field text-sm" />
                   </div>
                   <div>
                     <label className="input-label text-xs">Company</label>
                     <input value={exp.company} onChange={(e) => updateExperience(i, 'company', e.target.value)}
-                           placeholder="Google" className="input-field text-sm" />
+                      placeholder="Google" className="input-field text-sm" />
                   </div>
                   <div>
                     <label className="input-label text-xs">Location</label>
                     <input value={exp.location} onChange={(e) => updateExperience(i, 'location', e.target.value)}
-                           placeholder="Mountain View, CA" className="input-field text-sm" />
+                      placeholder="Mountain View, CA" className="input-field text-sm" />
                   </div>
                   <div>
                     <label className="input-label text-xs">Start Date</label>
                     <input type="month" value={exp.startDate}
-                           onChange={(e) => updateExperience(i, 'startDate', e.target.value)}
-                           className="input-field text-sm date-input" />
+                      onChange={(e) => updateExperience(i, 'startDate', e.target.value)}
+                      className="input-field text-sm date-input" />
                   </div>
                   <div>
                     <label className="input-label text-xs">End Date</label>
                     <input type="month" value={exp.endDate} disabled={exp.current}
-                           onChange={(e) => updateExperience(i, 'endDate', e.target.value)}
-                           className="input-field text-sm date-input disabled:opacity-50" />
+                      onChange={(e) => updateExperience(i, 'endDate', e.target.value)}
+                      className="input-field text-sm date-input disabled:opacity-50" />
                   </div>
                 </div>
 
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={exp.current}
-                         onChange={(e) => updateExperience(i, 'current', e.target.checked)}
-                         className="w-4 h-4 rounded border-gray-600 text-primary-500 focus:ring-primary-500" />
+                    onChange={(e) => updateExperience(i, 'current', e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-600 text-primary-500 focus:ring-primary-500" />
                   <span className="text-sm text-gray-400">Currently working here</span>
                 </label>
 
@@ -594,7 +601,7 @@ export default function ResumeBuilder() {
                     </div>
                   ))}
                   <button onClick={() => addBullet(i)}
-                          className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
+                    className="text-xs text-primary-400 hover:text-primary-300 flex items-center gap-1">
                     <Plus className="w-3 h-3" /> Add bullet
                   </button>
                 </div>
@@ -622,7 +629,7 @@ export default function ResumeBuilder() {
                   <span className="text-sm font-medium text-gray-400">Education {i + 1}</span>
                   {education.length > 1 && (
                     <button onClick={() => setEducation(education.filter((_, idx) => idx !== i))}
-                            className="text-red-400 hover:text-red-300 p-1">
+                      className="text-red-400 hover:text-red-300 p-1">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -631,29 +638,29 @@ export default function ResumeBuilder() {
                   <div>
                     <label className="input-label text-xs">Institution</label>
                     <input value={edu.institution} onChange={(e) => updateEducation(i, 'institution', e.target.value)}
-                           placeholder="Stanford University" className="input-field text-sm" />
+                      placeholder="Stanford University" className="input-field text-sm" />
                   </div>
                   <div>
                     <label className="input-label text-xs">Degree</label>
                     <input value={edu.degree} onChange={(e) => updateEducation(i, 'degree', e.target.value)}
-                           placeholder="B.S. Computer Science" className="input-field text-sm" />
+                      placeholder="B.S. Computer Science" className="input-field text-sm" />
                   </div>
                   <div>
                     <label className="input-label text-xs">Start Date</label>
                     <input type="month" value={edu.startDate}
-                           onChange={(e) => updateEducation(i, 'startDate', e.target.value)}
-                           className="input-field text-sm date-input" />
+                      onChange={(e) => updateEducation(i, 'startDate', e.target.value)}
+                      className="input-field text-sm date-input" />
                   </div>
                   <div>
                     <label className="input-label text-xs">End Date</label>
                     <input type="month" value={edu.endDate}
-                           onChange={(e) => updateEducation(i, 'endDate', e.target.value)}
-                           className="input-field text-sm date-input" />
+                      onChange={(e) => updateEducation(i, 'endDate', e.target.value)}
+                      className="input-field text-sm date-input" />
                   </div>
                   <div>
                     <label className="input-label text-xs">GPA (optional)</label>
                     <input value={edu.gpa} onChange={(e) => updateEducation(i, 'gpa', e.target.value)}
-                           placeholder="3.8" className="input-field text-sm" />
+                      placeholder="3.8" className="input-field text-sm" />
                   </div>
                 </div>
               </div>
@@ -695,7 +702,7 @@ export default function ResumeBuilder() {
                                        text-primary-300 rounded-lg text-sm">
                   {skill}
                   <button onClick={() => setSkills(skills.filter((_, idx) => idx !== i))}
-                          className="hover:text-red-400 transition-colors">
+                    className="hover:text-red-400 transition-colors">
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </span>
@@ -713,7 +720,7 @@ export default function ResumeBuilder() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-100">Projects</h3>
               <button onClick={() => setProjects([...projects, { ...EMPTY_PROJECT }])}
-                      className="text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1">
+                className="text-sm text-primary-400 hover:text-primary-300 flex items-center gap-1">
                 <Plus className="w-4 h-4" /> Add Project
               </button>
             </div>
@@ -724,7 +731,7 @@ export default function ResumeBuilder() {
                   <span className="text-sm font-medium text-gray-400">Project {i + 1}</span>
                   {projects.length > 1 && (
                     <button onClick={() => setProjects(projects.filter((_, idx) => idx !== i))}
-                            className="text-red-400 hover:text-red-300 p-1">
+                      className="text-red-400 hover:text-red-300 p-1">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   )}
@@ -733,12 +740,12 @@ export default function ResumeBuilder() {
                   <div>
                     <label className="input-label text-xs">Project Name</label>
                     <input value={proj.name} onChange={(e) => updateProject(i, 'name', e.target.value)}
-                           placeholder="My Awesome Project" className="input-field text-sm" />
+                      placeholder="My Awesome Project" className="input-field text-sm" />
                   </div>
                   <div>
                     <label className="input-label text-xs">Description</label>
                     <textarea value={proj.description} onChange={(e) => updateProject(i, 'description', e.target.value)}
-                              placeholder="What does this project do?" className="input-field text-sm" rows={3} />
+                      placeholder="What does this project do?" className="input-field text-sm" rows={3} />
                   </div>
                   <div>
                     <label className="input-label text-xs">Technologies (comma-separated)</label>
@@ -753,7 +760,7 @@ export default function ResumeBuilder() {
                   <div>
                     <label className="input-label text-xs">Link (optional)</label>
                     <input value={proj.link} onChange={(e) => updateProject(i, 'link', e.target.value)}
-                           placeholder="github.com/username/project" className="input-field text-sm" />
+                      placeholder="github.com/username/project" className="input-field text-sm" />
                   </div>
                 </div>
               </div>
@@ -780,11 +787,10 @@ export default function ResumeBuilder() {
                       setTemplateId(tmpl.id);
                       if (!themeColor) setThemeColor(tmpl.defaultColor);
                     }}
-                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 relative ${
-                      isSelected
-                        ? 'bg-primary-500/10 border-primary-500 shadow-lg shadow-primary-500/10 ring-2 ring-primary-500/50'
-                        : 'glass-card border-gray-800 hover:border-gray-700 hover:bg-gray-800/40'
-                    }`}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 relative ${isSelected
+                      ? 'bg-primary-500/10 border-primary-500 shadow-lg shadow-primary-500/10 ring-2 ring-primary-500/50'
+                      : 'glass-card border-gray-800 hover:border-gray-700 hover:bg-gray-800/40'
+                      }`}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-800 text-gray-300">
@@ -816,9 +822,8 @@ export default function ResumeBuilder() {
                       key={preset.id}
                       onClick={() => setThemeColor(preset.hex)}
                       title={preset.name}
-                      className={`w-9 h-9 rounded-full transition-all duration-300 flex items-center justify-center relative ${
-                        isColorActive ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110' : 'hover:scale-105'
-                      }`}
+                      className={`w-9 h-9 rounded-full transition-all duration-300 flex items-center justify-center relative ${isColorActive ? 'ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110' : 'hover:scale-105'
+                        }`}
                       style={{ backgroundColor: preset.hex }}
                     >
                       {isColorActive && <Check className="w-5 h-5 text-white stroke-[3]" />}
@@ -920,10 +925,9 @@ export default function ResumeBuilder() {
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap
-                  transition-all duration-300 ${
-                    activeSection === section.id
-                      ? 'bg-primary-500/20 text-primary-300 shadow-sm'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
+                  transition-all duration-300 ${activeSection === section.id
+                    ? 'bg-primary-500/20 text-primary-300 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
                   }`}
               >
                 <section.icon className="w-4 h-4" />
