@@ -32,3 +32,11 @@ export const uploadResume = (file) => {
     headers: { 'Content-Type': 'multipart/form-data' },
   });
 };
+
+// Generate a full resume schema using Gemini AI
+export const generateResumeWithAI = (params) =>
+  api.post('/resumes/generate', params);
+
+// Enhance a specific field (summary, bullet, or skills) using Gemini AI
+export const enhanceFieldWithAI = (params) =>
+  api.post('/resumes/enhance-field', params);

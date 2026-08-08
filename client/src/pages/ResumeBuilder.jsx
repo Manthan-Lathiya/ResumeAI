@@ -11,14 +11,14 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { createResume, updateResume, getResume } from '../api/resumes';
+import { createResume, updateResume, getResume, generateResumeWithAI, enhanceFieldWithAI } from '../api/resumes';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../api/axios';
 import ResumePreview from '../components/ResumePreview';
 import { TEMPLATES, COLOR_PRESETS } from '../templates/registry';
 import {
   User, Briefcase, GraduationCap, Code, FolderOpen, FileText, Palette, Check,
-  Plus, Trash2, Save, Eye, EyeOff, ChevronRight, CheckCircle, Download
+  Plus, Trash2, Save, Eye, EyeOff, ChevronRight, CheckCircle, Download, Sparkles, Wand2, X
 } from 'lucide-react';
 
 // ─── Section tabs for the form ───
@@ -74,6 +74,39 @@ export default function ResumeBuilder() {
   const [skillInput, setSkillInput] = useState('');
   const [projects, setProjects] = useState([{ ...EMPTY_PROJECT }]);
   const previewRef = useRef(null);
+
+  // AI Field Enhancer state
+  const [enhancingField, setEnhancingField] = useState(null);
+
+  async function handleEnhanceField(fieldType, currentValue, context, expIndex, bulletIndex) {
+    const key = fieldType === 'bullet' ? `bullet-${expIndex}-${bulletIndex}` : fieldType;
+    setEnhancingField(key);
+    try {
+      const response = await enhanceFieldWithAI({
+        fieldType,
+        currentValue,
+        context: context || title || 'Target Position'
+      });
+      const val = response.data?.enhancedValue;
+      if (val) {
+        if (fieldType === 'summary') {
+          setSummary(val);
+          toast.success('Summary polished with AI!');
+        } else if (fieldType === 'bullet') {
+          updateBullet(expIndex, bulletIndex, val);
+          toast.success('Bullet enhanced with metrics & action verbs!');
+        } else if (fieldType === 'skills' && Array.isArray(val)) {
+          const merged = Array.from(new Set([...skills, ...val]));
+          setSkills(merged);
+          toast.success(`Suggested ${val.length} role-relevant skills!`);
+        }
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Field enhancement failed.'));
+    } finally {
+      setEnhancingField(null);
+    }
+  }
 
   const location = useLocation();
 
@@ -442,7 +475,18 @@ export default function ResumeBuilder() {
       case 'summary':
         return (
           <div>
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">Professional Summary</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-100">Professional Summary</h3>
+              <button
+                type="button"
+                onClick={() => handleEnhanceField('summary', summary, title)}
+                disabled={enhancingField === 'summary'}
+                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-amber-300 border-amber-500/30 hover:bg-amber-500/10"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {enhancingField === 'summary' ? 'Enhancing...' : '✨ AI Polish Summary'}
+              </button>
+            </div>
             <textarea
               value={summary}
               onChange={(e) => setSummary(e.target.value)}
@@ -524,16 +568,26 @@ export default function ResumeBuilder() {
                 <div className="space-y-2">
                   <label className="input-label text-xs">Key Achievements / Responsibilities</label>
                   {exp.bullets.map((bullet, bi) => (
-                    <div key={bi} className="flex gap-2">
-                      <span className="text-gray-500 mt-3">•</span>
+                    <div key={bi} className="flex gap-2 items-center">
+                      <span className="text-gray-500">•</span>
                       <input
                         value={bullet}
                         onChange={(e) => updateBullet(i, bi, e.target.value)}
                         placeholder="Led migration to microservices, reducing latency by 40%"
                         className="input-field text-sm flex-1"
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleEnhanceField('bullet', bullet, `${exp.title || 'Role'} at ${exp.company || 'Company'}`, i, bi)}
+                        disabled={enhancingField === `bullet-${i}-${bi}`}
+                        title="Enhance bullet point with AI action verbs & metrics"
+                        className="text-xs py-1.5 px-2.5 rounded-lg bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 flex items-center gap-1 shrink-0"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-400" />
+                        {enhancingField === `bullet-${i}-${bi}` ? 'AI...' : '✨ AI'}
+                      </button>
                       {exp.bullets.length > 1 && (
-                        <button onClick={() => removeBullet(i, bi)} className="text-red-400 hover:text-red-300 mt-2">
+                        <button onClick={() => removeBullet(i, bi)} className="text-red-400 hover:text-red-300 p-1">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       )}
@@ -610,7 +664,18 @@ export default function ResumeBuilder() {
       case 'skills':
         return (
           <div>
-            <h3 className="text-lg font-semibold text-gray-100 mb-4">Skills</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-100">Skills</h3>
+              <button
+                type="button"
+                onClick={() => handleEnhanceField('skills', skills.join(', '), title)}
+                disabled={enhancingField === 'skills'}
+                className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 text-amber-300 border-amber-500/30 hover:bg-amber-500/10"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {enhancingField === 'skills' ? 'Suggesting...' : '✨ Auto-Suggest Skills'}
+              </button>
+            </div>
             <div className="flex gap-2 mb-4">
               <input
                 value={skillInput}

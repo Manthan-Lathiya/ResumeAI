@@ -255,3 +255,57 @@ class TailorResumeView(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+class GenerateResumeAIView(APIView):
+    """
+    POST /api/resumes/generate/
+    Generates a full structured resume schema using Google Gemini AI.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        job_title = request.data.get('jobTitle', '')
+        experience_level = request.data.get('experienceLevel', 'Mid-Level')
+        skills_input = request.data.get('skillsInput', '')
+        background_notes = request.data.get('backgroundNotes', '')
+
+        from .services.gemini_generator import generate_full_resume
+        try:
+            result = generate_full_resume(
+                job_title=job_title,
+                experience_level=experience_level,
+                skills_input=skills_input,
+                background_notes=background_notes
+            )
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class EnhanceFieldAIView(APIView):
+    """
+    POST /api/resumes/enhance-field/
+    Enhances a specific field (summary, experience bullet, or skills list) using Gemini AI.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        field_type = request.data.get('fieldType', '')
+        current_value = request.data.get('currentValue', '')
+        context = request.data.get('context', '')
+
+        if not field_type:
+            return Response({'error': 'fieldType is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .services.gemini_generator import enhance_resume_field
+        try:
+            result = enhance_resume_field(
+                field_type=field_type,
+                current_value=current_value,
+                context=context
+            )
+            return Response(result, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+

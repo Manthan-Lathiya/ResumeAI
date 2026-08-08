@@ -10,10 +10,42 @@ const router = express.Router();
 const FormData = require('form-data');
 const { forwardToDjango, forwardFileToDjango } = require('../proxy/djangoProxy');
 const { resumeSchema, validate } = require('../validators/resumeValidator');
-const { generalLimiter } = require('../middleware/rateLimiter');
+const { generalLimiter, aiLimiter } = require('../middleware/rateLimiter');
 const { upload } = require('../middleware/upload');
 
 router.use(generalLimiter);
+
+/**
+ * POST /api/resumes/generate
+ * Generates a full structured resume using AI
+ */
+router.post('/generate', aiLimiter, async (req, res, next) => {
+  try {
+    const result = await forwardToDjango('POST', '/api/resumes/generate/', {
+      data: req.body,
+      headers: { authorization: req.headers.authorization },
+    });
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * POST /api/resumes/enhance-field
+ * Enhances a specific resume field using AI
+ */
+router.post('/enhance-field', async (req, res, next) => {
+  try {
+    const result = await forwardToDjango('POST', '/api/resumes/enhance-field/', {
+      data: req.body,
+      headers: { authorization: req.headers.authorization },
+    });
+    res.status(result.status).json(result.data);
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * POST /api/resumes/upload
