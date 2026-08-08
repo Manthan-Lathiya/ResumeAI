@@ -10,7 +10,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { createResume, updateResume, getResume } from '../api/resumes';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../api/axios';
@@ -75,12 +75,57 @@ export default function ResumeBuilder() {
   const [projects, setProjects] = useState([{ ...EMPTY_PROJECT }]);
   const previewRef = useRef(null);
 
-  // Load existing resume if editing
+  const location = useLocation();
+
+  // Load existing resume if editing or populate from state
   useEffect(() => {
+    if (location.state?.initialData) {
+      populateFromData(location.state.initialData);
+    }
     if (editId) {
       loadResume(editId);
     }
   }, [editId]);
+
+  function populateFromData(data) {
+    if (!data) return;
+    if (data.title) setTitle(data.title);
+    if (data.templateId || data.template_id) setTemplateId(data.templateId || data.template_id);
+    if (data.themeColor || data.theme_color) setThemeColor(data.themeColor || data.theme_color);
+    if (data.personalInfo || data.personal_info) setPersonalInfo(data.personalInfo || data.personal_info);
+    if (data.summary !== undefined) setSummary(data.summary);
+    if (data.skills) setSkills(data.skills);
+
+    const normalizeExperience = (expArray) => {
+      if (!expArray || !expArray.length) return [{ ...EMPTY_EXPERIENCE }];
+      return expArray.map(exp => ({
+        ...exp,
+        bullets: exp.bullets || (exp.description ? [exp.description] : ['']),
+      }));
+    };
+
+    const normalizeEducation = (eduArray) => {
+      if (!eduArray || !eduArray.length) return [{ ...EMPTY_EDUCATION }];
+      return eduArray.map(edu => ({
+        ...edu,
+        startDate: edu.startDate || '',
+        endDate: edu.endDate || edu.graduationDate || '',
+        gpa: edu.gpa || '',
+      }));
+    };
+
+    const normalizeProjects = (projArray) => {
+      if (!projArray || !projArray.length) return [{ ...EMPTY_PROJECT }];
+      return projArray.map(proj => ({
+        ...proj,
+        technologies: proj.technologies || [],
+      }));
+    };
+
+    if (data.experience) setExperience(normalizeExperience(data.experience));
+    if (data.education) setEducation(normalizeEducation(data.education));
+    if (data.projects) setProjects(normalizeProjects(data.projects));
+  }
 
   async function loadResume(id) {
     try {

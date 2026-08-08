@@ -11,7 +11,8 @@
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { UserPlus, Mail, Lock, Eye, EyeOff, User, Sparkles } from 'lucide-react';
+import { UserPlus, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import BrandLogo from '../components/common/BrandLogo';
 
 export default function Signup() {
   const { signup, isAuthenticated, loading } = useAuth();
@@ -60,11 +61,10 @@ export default function Signup() {
 
       <div className="w-full max-w-md animate-fade-in">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex p-3 bg-gradient-to-br from-primary-500 to-accent-500 
-                        rounded-2xl shadow-lg shadow-primary-500/25 mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <Link to="/" className="inline-flex items-center mb-4 hover:opacity-90 transition-opacity">
+            <BrandLogo size="large" showSubtitle={false} />
+          </Link>
           <h1 className="text-3xl font-bold gradient-text mb-2">Create Account</h1>
           <p className="text-gray-400">Start building AI-powered resumes</p>
         </div>

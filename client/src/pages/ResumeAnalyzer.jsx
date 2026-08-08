@@ -8,14 +8,14 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import { analyzeResume } from '../api/analysis';
-import { getResumes, getResume, updateResume } from '../api/resumes';
+import { getResumes, getResume, updateResume, createResume } from '../api/resumes';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../api/axios';
 import { downloadResumeAsPDF, downloadTextAsFile } from '../utils/pdf';
 import {
   Upload, FileText, Sparkles, BarChart3, AlertTriangle,
   CheckCircle, XCircle, Info, ChevronDown, ChevronUp,
-  Zap, Target, BookOpen, ArrowRight, Download, Edit3,
+  Zap, Target, BookOpen, ArrowRight, Download, Edit3, Save,
   RefreshCw, Check, CheckCheck, Award, Wand2, MessageSquare,
   Search, ShieldCheck, Activity
 } from 'lucide-react';
@@ -77,7 +77,16 @@ export default function ResumeAnalyzer() {
   }
 
   async function handleAnalyze() {
-    if (!selectedResumeId && !file) {
+    let targetResumeId = selectedResumeId || result?.resumeId || result?.id;
+
+    // If suggestions were applied to resumeData, save to DB first so backend re-analyzes fresh text
+    if (appliedSuggestions.size > 0 && result?.resumeData) {
+      targetResumeId = await saveCurrentResume(false);
+    }
+
+    const fileToSend = targetResumeId ? null : file;
+
+    if (!targetResumeId && !fileToSend) {
       toast.error('Please select a resume or upload a file');
       return;
     }
@@ -88,8 +97,12 @@ export default function ResumeAnalyzer() {
     setResult(null);
     setAppliedSuggestions(new Set());
     try {
-      const response = await analyzeResume(file, selectedResumeId || null, controller.signal);
+      const response = await analyzeResume(fileToSend, targetResumeId || null, controller.signal);
       setResult(response.data);
+      if (response.data?.resumeId) {
+        setSelectedResumeId(response.data.resumeId);
+        setFile(null);
+      }
       toast.success('Resume analysis complete!');
     } catch (error) {
       if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
@@ -110,6 +123,8 @@ export default function ResumeAnalyzer() {
     }
   }
 
+  const [savingResume, setSavingResume] = useState(false);
+
   function applySuggestion(index) {
     setAppliedSuggestions(prev => {
       const next = new Set(prev);
@@ -121,7 +136,15 @@ export default function ResumeAnalyzer() {
       const suggestion = result.suggestions[index];
       if (suggestion.original && suggestion.improved) {
         let resumeStr = JSON.stringify(result.resumeData);
-        resumeStr = resumeStr.replace(suggestion.original, suggestion.improved);
+        if (resumeStr.includes(suggestion.original)) {
+          resumeStr = resumeStr.replace(suggestion.original, suggestion.improved);
+        } else {
+          const jsonEscapedOriginal = JSON.stringify(suggestion.original).slice(1, -1);
+          const jsonEscapedImproved = JSON.stringify(suggestion.improved).slice(1, -1);
+          if (resumeStr.includes(jsonEscapedOriginal)) {
+            resumeStr = resumeStr.replace(jsonEscapedOriginal, jsonEscapedImproved);
+          }
+        }
         
         setResult(prev => ({
           ...prev,
@@ -130,7 +153,7 @@ export default function ResumeAnalyzer() {
       }
     }
 
-    toast.success('Suggestion applied!');
+    toast.success('Suggestion applied! Click "Save Resume" or "Edit in Builder" to persist.');
   }
 
   function applyAllSuggestions() {
@@ -143,7 +166,15 @@ export default function ResumeAnalyzer() {
       let resumeStr = JSON.stringify(result.resumeData);
       result.suggestions.forEach(suggestion => {
         if (suggestion.original && suggestion.improved) {
-          resumeStr = resumeStr.replace(suggestion.original, suggestion.improved);
+          if (resumeStr.includes(suggestion.original)) {
+            resumeStr = resumeStr.replace(suggestion.original, suggestion.improved);
+          } else {
+            const jsonEscapedOriginal = JSON.stringify(suggestion.original).slice(1, -1);
+            const jsonEscapedImproved = JSON.stringify(suggestion.improved).slice(1, -1);
+            if (resumeStr.includes(jsonEscapedOriginal)) {
+              resumeStr = resumeStr.replace(jsonEscapedOriginal, jsonEscapedImproved);
+            }
+          }
         }
       });
       setResult(prev => ({
@@ -152,7 +183,7 @@ export default function ResumeAnalyzer() {
       }));
     }
 
-    toast.success(`Applied all ${result.suggestions.length} suggestions!`);
+    toast.success(`Applied all ${result.suggestions.length} suggestions! Click "Save Resume" or "Edit in Builder" to persist.`);
   }
 
   function getScoreBadge(score) {
@@ -171,27 +202,67 @@ export default function ResumeAnalyzer() {
     { title: 'AI Readability Index', score: Math.min(100, Math.max(70, score + 5)), icon: Activity, desc: 'Parsing ease for ATS scanners' },
   ];
 
-  async function handleEditInBuilder() {
-    let targetId = result?.resumeId || result?.resume || result?.resume_id || selectedResumeId;
-
-    if (!targetId && result?.resumeData) {
-      try {
-        const createRes = await createResume(result.resumeData);
-        targetId = createRes.data?.id || createRes.data?.resumeId;
-      } catch (e) {
-        console.log('Failed to auto-create resume:', e);
-      }
+  async function saveCurrentResume(showToast = true) {
+    if (!result?.resumeData) {
+      if (showToast) toast.error('No resume data available to save.');
+      return null;
     }
 
-    if (targetId) {
-      if (result?.resumeData) {
-        try {
-          await updateResume(targetId, result.resumeData);
-        } catch (e) {
-          console.log('Update error:', e);
+    setSavingResume(true);
+    let targetId = result?.resumeId || result?.resume || result?.resume_id || selectedResumeId;
+
+    const payload = {
+      title: result.resumeData.title || (result.resumeData.personalInfo?.fullName ? `${result.resumeData.personalInfo.fullName}'s Resume` : 'Analyzed Resume'),
+      personalInfo: result.resumeData.personalInfo || {},
+      summary: result.resumeData.summary || '',
+      experience: result.resumeData.experience || [],
+      education: result.resumeData.education || [],
+      skills: result.resumeData.skills || [],
+      projects: result.resumeData.projects || [],
+      templateId: result.resumeData.templateId || 'classic',
+      themeColor: result.resumeData.themeColor || '#2563eb',
+      status: 'draft',
+    };
+
+    try {
+      if (targetId) {
+        await updateResume(targetId, payload);
+        if (showToast) toast.success('Resume updated & saved with AI changes!');
+        return targetId;
+      } else {
+        const response = await createResume(payload);
+        const newId = response.data?.id || response.data?.resumeId;
+        if (newId) {
+          setSelectedResumeId(newId);
+          setResult(prev => ({ ...prev, resumeId: newId }));
+          try {
+            const listRes = await getResumes();
+            setResumes(listRes.data.resumes || []);
+          } catch (e) {}
+          if (showToast) toast.success('Resume saved to your account!');
+          return newId;
         }
       }
-      navigate(`/builder?id=${targetId}`);
+    } catch (error) {
+      console.error('Save error:', error);
+      if (showToast) toast.error(getErrorMessage(error, 'Failed to save resume.'));
+    } finally {
+      setSavingResume(false);
+    }
+    return targetId;
+  }
+
+  async function handleEditInBuilder() {
+    const savedId = await saveCurrentResume(false);
+    if (savedId) {
+      toast.success('Redirecting to Resume Builder...');
+      navigate(`/builder?id=${savedId}`, {
+        state: { initialData: result?.resumeData }
+      });
+    } else if (result?.resumeData) {
+      navigate('/builder', {
+        state: { initialData: result.resumeData }
+      });
     } else {
       navigate('/builder');
     }
@@ -380,7 +451,15 @@ export default function ResumeAnalyzer() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={() => saveCurrentResume(true)}
+                disabled={savingResume}
+                className="btn-secondary text-xs py-2 px-3.5 flex items-center gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+              >
+                <Save className="w-3.5 h-3.5" /> {savingResume ? 'Saving...' : 'Save Resume'}
+              </button>
+              <button
                 onClick={handleEditInBuilder}
+                disabled={savingResume}
                 className="btn-primary text-xs py-2 px-3.5 flex items-center gap-1.5 shadow-lg shadow-primary-500/20 bg-gradient-to-r from-primary-600 to-blue-500"
               >
                 <Edit3 className="w-3.5 h-3.5" /> Edit in Resume Builder

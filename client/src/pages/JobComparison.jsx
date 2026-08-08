@@ -75,7 +75,9 @@ export default function JobComparison() {
   }
 
   async function handleCompare() {
-    if (!selectedResumeId && !file) {
+    let targetResumeId = selectedResumeId || result?.resumeId || result?.id;
+
+    if (!targetResumeId && !file) {
       toast.error('Please select a resume or upload a file');
       return;
     }
@@ -84,6 +86,35 @@ export default function JobComparison() {
       return;
     }
 
+    // Auto-save applied suggestions to database before re-comparing
+    if (appliedSuggestions.size > 0 && result?.resumeData) {
+      const payload = {
+        title: result.resumeData.title || 'Tailored Resume',
+        personalInfo: result.resumeData.personalInfo || {},
+        summary: result.resumeData.summary || '',
+        experience: result.resumeData.experience || [],
+        education: result.resumeData.education || [],
+        skills: result.resumeData.skills || [],
+        projects: result.resumeData.projects || [],
+        templateId: result.resumeData.templateId || 'classic',
+        themeColor: result.resumeData.themeColor || '#2563eb',
+        status: 'draft',
+      };
+      try {
+        if (targetResumeId) {
+          await updateResume(targetResumeId, payload);
+        } else {
+          const createRes = await createResume(payload);
+          targetResumeId = createRes.data?.id || createRes.data?.resumeId;
+          if (targetResumeId) setSelectedResumeId(targetResumeId);
+        }
+      } catch (e) {
+        console.error('Failed to auto-save resume before comparison:', e);
+      }
+    }
+
+    const fileToSend = targetResumeId ? null : file;
+
     const controller = new AbortController();
     setAbortController(controller);
     setComparing(true);
@@ -91,8 +122,12 @@ export default function JobComparison() {
     setAppliedSuggestions(new Set());
 
     try {
-      const response = await compareJobDescription(selectedResumeId || null, jobDescription, file, controller.signal);
+      const response = await compareJobDescription(targetResumeId || null, jobDescription, fileToSend, controller.signal);
       setResult(response.data);
+      if (response.data?.resumeId) {
+        setSelectedResumeId(response.data.resumeId);
+        setFile(null);
+      }
       toast.success('Comparison complete!');
     } catch (error) {
       if (error.name === 'CanceledError' || error.code === 'ERR_CANCELED') {
@@ -178,26 +213,40 @@ export default function JobComparison() {
   async function handleEditInBuilder() {
     let targetId = result?.resumeId || result?.resume || result?.resume_id || selectedResumeId;
 
-    if (!targetId && result?.resumeData) {
+    if (result?.resumeData) {
+      const payload = {
+        title: result.resumeData.title || (result.resumeData.personalInfo?.fullName ? `${result.resumeData.personalInfo.fullName}'s Resume` : 'Tailored Resume'),
+        personalInfo: result.resumeData.personalInfo || {},
+        summary: result.resumeData.summary || '',
+        experience: result.resumeData.experience || [],
+        education: result.resumeData.education || [],
+        skills: result.resumeData.skills || [],
+        projects: result.resumeData.projects || [],
+        templateId: result.resumeData.templateId || 'classic',
+        themeColor: result.resumeData.themeColor || '#2563eb',
+        status: 'draft',
+      };
+
       try {
-        const createRes = await createResume(result.resumeData);
-        targetId = createRes.data?.id || createRes.data?.resumeId;
+        if (targetId) {
+          await updateResume(targetId, payload);
+        } else {
+          const createRes = await createResume(payload);
+          targetId = createRes.data?.id || createRes.data?.resumeId;
+        }
       } catch (e) {
-        console.log('Failed to auto-create resume:', e);
+        console.log('Failed to save resume before redirecting:', e);
       }
     }
 
     if (targetId) {
-      if (result?.resumeData) {
-        try {
-          await updateResume(targetId, result.resumeData);
-        } catch (e) {
-          console.log('Update error:', e);
-        }
-      }
-      navigate(`/builder?id=${targetId}`);
+      navigate(`/builder?id=${targetId}`, {
+        state: { initialData: result?.resumeData }
+      });
     } else {
-      navigate('/builder');
+      navigate('/builder', {
+        state: { initialData: result?.resumeData }
+      });
     }
   }
 

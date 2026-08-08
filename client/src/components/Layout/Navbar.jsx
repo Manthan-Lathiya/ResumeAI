@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { useState } from 'react';
+import BrandLogo from '../common/BrandLogo';
 
 export default function Navbar() {
   const { isAuthenticated, user, logout } = useAuth();
@@ -49,12 +50,8 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="p-2 bg-gradient-to-br from-primary-500 to-accent-500 rounded-xl 
-                          group-hover:shadow-lg group-hover:shadow-primary-500/30 transition-all duration-300">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold gradient-text">ResumeAI</span>
+          <Link to="/" className="hover:opacity-90 transition-opacity">
+            <BrandLogo size="medium" showSubtitle={false} />
           </Link>
 
           {/* Desktop Navigation */}

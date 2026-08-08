@@ -67,54 +67,71 @@ def analyze_resume(resume_text):
 
     # This prompt is the most important part — it tells Gemini exactly
     # what to analyze and how to format the response
-    prompt = f"""You are an expert resume reviewer and ATS (Applicant Tracking System) specialist.
-Analyze the following resume and provide a detailed, actionable review.
+    prompt = f"""You are an elite ATS (Applicant Tracking System) Auditor and Senior Career Strategist.
+Your job is to strictly and objectively audit the provided resume and return an accurate ATS score (0-100), category breakdowns, and actionable suggestions.
 
-RESUME TEXT:
+CRITICAL EVALUATION & SCORING RULES:
+1. **Dynamic & Fair ATS Scoring (0 - 100)**:
+   - Evaluate the resume text rigorously based on the presence of:
+     a) Strong metrics, quantifiable achievements, and percentages/numbers in experience bullet points.
+     b) Industry-relevant technical skills, tools, and domain keywords.
+     c) Strong action verbs (e.g. "Spearheaded", "Architected", "Engineered", "Optimized", "Scaled") starting every bullet point.
+     d) Complete essential sections (Personal Info, Professional Summary, Work Experience, Education, Skills, Projects).
+     e) Professional summary with clear title and core competencies.
+   - **SCORING RUBRIC**:
+     - **90-100**: Exceptional ATS quality. Clear metrics (%, $, scale) in almost all bullets, rich keyword density, polished summary, strong action verbs, zero missing core elements.
+     - **80-89**: Very strong. Most bullets have metrics or strong verbs, comprehensive skill list, solid summary.
+     - **70-79**: Good foundation. Has experience bullets, but lacks quantitative metrics or specific industry keywords.
+     - **55-69**: Basic/Needs work. Generic descriptions, missing key technical keywords, no metrics, passive language.
+     - **Below 55**: Sub-par. Missing core sections, short/vague descriptions, weak layout.
+
+2. **SCORE PROGRESSION FOR RE-ANALYSIS**:
+   - Every time a user improves their resume (e.g. adding quantifiable metrics, incorporating relevant tech skills, rewriting weak bullets with action verbs, expanding the summary), YOU MUST RE-EVALUATE AND INCREASE THE ATS SCORE ACCORDINGLY to reflect the concrete improvements made.
+   - Do NOT give the exact same score if the text has improved in quality, action verbs, metrics, or keywords.
+
+3. **SPECIFIC & NON-DUPLICATIVE SUGGESTIONS**:
+   - Provide 3 to 5 highly specific, actionable improvement suggestions.
+   - Each suggestion MUST quote exact text from the resume in "original" and provide a significantly improved, high-impact version in "improved".
+   - If an improvement has ALREADY been made in the text (e.g. metrics added, action verb present), DO NOT ask the user to make the same change again. Focus on remaining areas for growth.
+
+RESUME TEXT TO AUDIT:
 ---
 {resume_text}
 ---
 
-Provide your analysis as a JSON object with EXACTLY this structure (no markdown, no code blocks, just pure JSON):
+Provide your audit response as a JSON object with EXACTLY this structure (no markdown fences, no extra text):
 {{
-    "atsScore": <number 0-100>,
+    "atsScore": <integer 0-100 representing current quality>,
     "formatting": {{
-        "score": <number 0-100>,
+        "score": <integer 0-100>,
         "issues": [
             {{
-                "severity": "<error|warning|info>",
-                "message": "<specific issue description>",
-                "location": "<which section has the issue>"
+                "severity": "error",
+                "message": "<description of formatting/clarity issue>",
+                "location": "<section name>"
             }}
         ]
     }},
     "sections": {{
-        "present": ["<list of sections found in the resume>"],
-        "missing": ["<list of important sections that are missing>"],
-        "recommendations": ["<specific recommendations for section improvements>"]
+        "present": ["<sections found in resume>"],
+        "missing": ["<essential sections missing, if any>"],
+        "recommendations": ["<recommendations for section organization>"]
     }},
     "keywords": {{
-        "found": ["<technical and professional keywords found>"],
-        "suggestedToAdd": ["<keywords that should be added based on the resume's target role>"],
-        "reasoning": "<explain why these keywords matter>"
+        "score": <integer 0-100>,
+        "found": ["<key skills and domain keywords present in text>"],
+        "suggestedToAdd": ["<industry keywords that would boost ATS matching>"],
+        "reasoning": "<explanation of keyword density and impact>"
     }},
     "suggestions": [
         {{
-            "section": "<which section this suggestion is for>",
-            "original": "<the original text from the resume>",
-            "improved": "<your improved version>",
-            "reasoning": "<why this improvement matters for ATS and readability>"
+            "section": "<section name e.g. Work Experience | Summary | Skills>",
+            "original": "<exact quote of text from resume>",
+            "improved": "<high-impact rewrite featuring metrics, strong action verbs, and keywords>",
+            "reasoning": "<why this rewrite increases ATS ranking and recruiter interest>"
         }}
     ]
-}}
-
-IMPORTANT RULES:
-1. Be SPECIFIC — reference actual content from the resume, not generic advice
-2. The "original" field in suggestions must quote actual text from the resume
-3. The "improved" field must be a concrete rewrite, not a vague suggestion
-4. Score ATS compatibility based on: keyword density, formatting, section completeness, quantified achievements, action verbs
-5. Suggest at least 3 specific improvements with before/after examples
-6. Return ONLY the JSON object, no other text"""
+}}"""
 
     # Call Gemini API with dynamic model fallback
     response_text = call_gemini_models(client, prompt)
@@ -159,44 +176,62 @@ def compare_with_job_description(resume_text, job_description):
     """
     client = get_gemini_client()
 
-    prompt = f"""You are an expert resume consultant and hiring specialist.
-Compare the following resume against the job description and provide a detailed match analysis.
+    prompt = f"""You are an elite Talent Acquisition Specialist and ATS Matching Systems Expert.
+Your task is to conduct a rigorous, objective comparison between the candidate's Resume and the target Job Description (JD), calculating an accurate Match Score (0-100) and actionable alignment recommendations.
 
-RESUME:
+EVALUATION & MATCH SCORING RUBRIC:
+1. **Dynamic Match Score (0 - 100)**:
+   - Calculate `matchScore` strictly based on 4 key factors:
+     a) **Hard & Technical Skill Overlap (40%)**: Does the resume contain the explicit technical skills, tools, frameworks, and domain expertise required in the JD?
+     b) **Experience & Responsibility Alignment (30%)**: Do the experience bullet points demonstrate duties and projects matching the core responsibilities described in the JD?
+     c) **Keyword & Terminology Precision (15%)**: Does the resume use the exact industry standard terminology and phrases referenced in the job posting?
+     d) **Impact & Metrics (15%)**: Are accomplishments quantified with metrics (%, $, scale, velocity)?
+   - **MATCH SCORE SCALE**:
+     - **90-100**: Exceptional Alignment. Resume covers 90%+ of required hard skills, matches experience requirements, uses exact JD terminology, and includes quantified metrics.
+     - **78-89**: Strong Alignment. Matches most key skills and duties, but missing 1-2 secondary keywords or specific metrics.
+     - **60-77**: Partial Match. Has relevant general experience, but missing several critical technical skills or specific JD requirements.
+     - **Below 60**: Low Match. Significant keyword gaps, missing core required qualifications, or unaligned domain background.
+
+2. **SCORE PROGRESSION UPON RE-ANALYSIS**:
+   - If the candidate has updated their resume (e.g. added missing keywords, incorporated required skills into their skills list or experience bullets, rewritten achievements to match JD requirements), YOU MUST RE-EVALUATE AND ACCORDINGLY INCREASE THE `matchScore` to reflect the concrete improvements made.
+   - Do NOT give the exact same match score if missing keywords or bullet rewrites have been integrated into the resume!
+
+3. **KEYWORDS ANALYSIS**:
+   - `matchedKeywords`: Array of important skills, tools, and qualifications present in BOTH the resume and JD.
+   - `missingKeywords`: Array of critical skills, certifications, or tools explicitly required in the JD but missing from the resume.
+
+4. **ACTIONABLE SUGGESTIONS (Provide 3 to 5 high-impact items)**:
+   - Provide concrete suggestions of types: "add_skill", "rewrite_bullet", "add_section", or "reorder".
+   - For "rewrite_bullet": The "original" field MUST quote exact text from the resume, and "improved" MUST be a concrete, high-impact rewrite infusing required JD keywords and metrics.
+   - Do NOT suggest adding skills or rewrites that the candidate has ALREADY incorporated into their resume.
+
+RESUME TO EVALUATE:
 ---
 {resume_text}
 ---
 
-JOB DESCRIPTION:
+TARGET JOB DESCRIPTION:
 ---
 {job_description}
 ---
 
-Provide your analysis as a JSON object with EXACTLY this structure (no markdown, no code blocks, just pure JSON):
+Provide your analysis as a JSON object with EXACTLY this structure (no markdown fences, no extra text):
 {{
-    "matchScore": <number 0-100>,
-    "matchedKeywords": ["<skills/keywords found in BOTH the resume and JD>"],
-    "missingKeywords": ["<important skills/keywords in the JD but NOT in the resume>"],
+    "matchScore": <integer 0-100 representing exact alignment percentage>,
+    "matchedKeywords": ["<skills/tools found in BOTH resume and JD>"],
+    "missingKeywords": ["<required skills/tools from JD missing in resume>"],
     "suggestions": [
         {{
-            "type": "<add_skill|rewrite_bullet|add_section|reorder>",
-            "skill": "<relevant skill if type is add_skill>",
-            "section": "<relevant section>",
-            "original": "<original text from resume if rewriting>",
-            "improved": "<suggested improvement>",
-            "reasoning": "<why this change improves the match>"
+            "type": "add_skill" | "rewrite_bullet" | "add_section" | "reorder",
+            "skill": "<specific skill name if type is add_skill>",
+            "section": "<Work Experience | Skills | Summary | Projects>",
+            "original": "<exact quote from resume if type is rewrite_bullet, else empty>",
+            "improved": "<high-impact tailored text incorporating missing JD keywords and metrics>",
+            "reasoning": "<why this specific adjustment increases hiring manager interest and ATS match>"
         }}
     ],
-    "overallAssessment": "<2-3 sentence summary of how well the resume matches and top priorities for improvement>"
-}}
-
-IMPORTANT RULES:
-1. Be SPECIFIC to THIS resume and THIS job description
-2. Missing keywords should only include skills/requirements explicitly mentioned in the JD
-3. Only suggest adding skills the candidate might plausibly have based on their background
-4. Provide at least 3 concrete rewrite suggestions with before/after
-5. The matchScore should reflect actual keyword and experience alignment
-6. Return ONLY the JSON object, no other text"""
+    "overallAssessment": "<2-3 sentence executive summary of job match alignment, key strengths, and highest-priority gaps>"
+}}"""
 
     response_text = call_gemini_models(client, prompt)
 

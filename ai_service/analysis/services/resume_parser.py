@@ -110,21 +110,12 @@ def resume_to_text(resume):
     Convert a saved Resume model instance to plain text for AI analysis.
 
     Takes the structured data from our database and formats it as
-    readable text that Claude can analyze.
-
-    Args:
-        resume: Resume model instance
-
-    Returns:
-        str: Formatted resume text
+    readable text for Gemini AI analysis.
     """
-    if getattr(resume, 'is_uploaded', False) and getattr(resume, 'resume_text', ''):
-        return resume.resume_text
-
     lines = []
 
     # Personal Info
-    info = resume.personal_info or {}
+    info = getattr(resume, 'personal_info', {}) or {}
     if info.get('fullName'):
         lines.append(info['fullName'])
     if info.get('email'):
@@ -189,4 +180,8 @@ def resume_to_text(resume):
                 lines.append(f'Link: {proj["link"]}')
             lines.append('')
 
-    return '\n'.join(lines)
+    text = '\n'.join(lines).strip()
+    if text:
+        return text
+
+    return getattr(resume, 'resume_text', '') or ''
