@@ -1,30 +1,11 @@
-/**
- * Resumes API Functions
- */
-
 import api from './axios';
 
-// Get all resumes for the current user
-export const getResumes = () =>
-  api.get('/resumes');
+export const getResumes = () => api.get('/resumes');
+export const getResume = (id) => api.get(`/resumes/${id}`);
+export const createResume = (data) => api.post('/resumes', data);
+export const updateResume = (id, data) => api.put(`/resumes/${id}`, data);
+export const deleteResume = (id) => api.delete(`/resumes/${id}`);
 
-// Get a single resume by ID
-export const getResume = (id) =>
-  api.get(`/resumes/${id}`);
-
-// Create a new resume
-export const createResume = (data) =>
-  api.post('/resumes', data);
-
-// Update an existing resume
-export const updateResume = (id, data) =>
-  api.put(`/resumes/${id}`, data);
-
-// Delete a resume
-export const deleteResume = (id) =>
-  api.delete(`/resumes/${id}`);
-
-// Upload a raw resume file
 export const uploadResume = (file) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -33,10 +14,5 @@ export const uploadResume = (file) => {
   });
 };
 
-// Generate a full resume schema using Gemini AI
-export const generateResumeWithAI = (params) =>
-  api.post('/resumes/generate', params);
-
-// Enhance a specific field (summary, bullet, or skills) using Gemini AI
-export const enhanceFieldWithAI = (params) =>
-  api.post('/resumes/enhance-field', params);
+export const generateResumeWithAI = (params) => api.post('/resumes/generate', params);
+export const enhanceFieldWithAI = (params) => api.post('/resumes/enhance-field', params);

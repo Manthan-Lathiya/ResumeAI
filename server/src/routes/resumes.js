@@ -1,10 +1,3 @@
-/**
- * Resume Routes — Express Gateway
- *
- * CRUD operations for resumes.
- * Validates input, then forwards to Django.
- */
-
 const express = require('express');
 const router = express.Router();
 const FormData = require('form-data');
@@ -15,10 +8,6 @@ const { upload } = require('../middleware/upload');
 
 router.use(generalLimiter);
 
-/**
- * POST /api/resumes/generate
- * Generates a full structured resume using AI
- */
 router.post('/generate', aiLimiter, async (req, res, next) => {
   try {
     const result = await forwardToDjango('POST', '/api/resumes/generate/', {
@@ -31,10 +20,6 @@ router.post('/generate', aiLimiter, async (req, res, next) => {
   }
 });
 
-/**
- * POST /api/resumes/enhance-field
- * Enhances a specific resume field using AI
- */
 router.post('/enhance-field', async (req, res, next) => {
   try {
     const result = await forwardToDjango('POST', '/api/resumes/enhance-field/', {
@@ -47,15 +32,9 @@ router.post('/enhance-field', async (req, res, next) => {
   }
 });
 
-/**
- * POST /api/resumes/upload
- * Upload a raw resume (PDF/DOCX)
- */
 router.post('/upload', upload.single('file'), async (req, res, next) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'Please upload a file' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'Please upload a file' });
 
     const formData = new FormData();
     formData.append('file', req.file.buffer, {
@@ -74,10 +53,6 @@ router.post('/upload', upload.single('file'), async (req, res, next) => {
   }
 });
 
-/**
- * GET /api/resumes
- * List all resumes for the authenticated user.
- */
 router.get('/', async (req, res, next) => {
   try {
     const result = await forwardToDjango('GET', '/api/resumes/', {
@@ -89,10 +64,6 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-/**
- * POST /api/resumes
- * Create a new resume. Validates the resume data first.
- */
 router.post('/', validate(resumeSchema), async (req, res, next) => {
   try {
     const result = await forwardToDjango('POST', '/api/resumes/', {
@@ -105,10 +76,6 @@ router.post('/', validate(resumeSchema), async (req, res, next) => {
   }
 });
 
-/**
- * GET /api/resumes/:id
- * Get a specific resume.
- */
 router.get('/:id', async (req, res, next) => {
   try {
     const result = await forwardToDjango('GET', `/api/resumes/${req.params.id}/`, {
@@ -120,10 +87,6 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-/**
- * PUT /api/resumes/:id
- * Update a specific resume.
- */
 router.put('/:id', validate(resumeSchema), async (req, res, next) => {
   try {
     const result = await forwardToDjango('PUT', `/api/resumes/${req.params.id}/`, {
@@ -136,10 +99,6 @@ router.put('/:id', validate(resumeSchema), async (req, res, next) => {
   }
 });
 
-/**
- * DELETE /api/resumes/:id
- * Delete a specific resume.
- */
 router.delete('/:id', async (req, res, next) => {
   try {
     const result = await forwardToDjango('DELETE', `/api/resumes/${req.params.id}/`, {

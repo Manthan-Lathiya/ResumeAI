@@ -1,10 +1,3 @@
-/**
- * React Application Entry Point
- *
- * This is the very first file that runs.
- * It renders our App component into the HTML page.
- */
-
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
@@ -15,12 +8,9 @@ import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {/* BrowserRouter enables client-side routing (page navigation without reload) */}
     <BrowserRouter>
-      {/* AuthProvider makes auth state available to ALL components */}
       <AuthProvider>
         <App />
-        {/* Toast notifications (success/error popups) */}
         <Toaster
           position="top-right"
           toastOptions={{

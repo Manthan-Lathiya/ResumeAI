@@ -1,13 +1,3 @@
-/**
- * Signup Page
- *
- * New user registration form with:
- * - Name, email, and password fields
- * - Password strength indicator
- * - Form validation
- * - Loading state
- */
-
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

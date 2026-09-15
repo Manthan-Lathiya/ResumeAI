@@ -1,10 +1,3 @@
-/**
- * Job Description Comparison Page — AI Match Radar
- *
- * Compare a saved resume OR uploaded file against a target job description.
- * Returns match score, matched & missing keyword pill matrix, 1-click apply, edit in builder, and downloads.
- */
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { getResumes, updateResume, createResume } from '../api/resumes';

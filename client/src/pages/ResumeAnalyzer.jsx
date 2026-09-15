@@ -1,10 +1,3 @@
-/**
- * Resume Analyzer Page — Advanced AI Intelligence Studio
- *
- * Upload a PDF/DOCX or select a saved resume for deep ATS scoring,
- * category breakdowns, keyword analysis, and 1-click AI suggestions.
- */
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import { analyzeResume } from '../api/analysis';

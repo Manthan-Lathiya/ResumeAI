@@ -1,10 +1,3 @@
-/**
- * Dashboard Page
- *
- * Shows the user's resumes, recent analyses, and quick action buttons.
- * This is the main hub after login.
- */
-
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';

@@ -5,10 +5,6 @@ const { generalLimiter } = require('../middleware/rateLimiter');
 
 router.use(generalLimiter);
 
-/**
- * POST /api/interview/generate
- * Generate customized interview questions and STAR model answers
- */
 router.post('/generate', async (req, res, next) => {
   try {
     const result = await forwardToDjango('POST', '/api/resumes/interview-prep/', {

@@ -1,11 +1,3 @@
-/**
- * Express Server Entry Point
- *
- * This file starts the Express server.
- * The actual app configuration is in src/app.js
- */
-
-// Load environment variables from .env file FIRST (before anything else)
 require('dotenv').config();
 
 const app = require('./src/app');

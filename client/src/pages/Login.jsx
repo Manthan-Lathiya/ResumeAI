@@ -1,9 +1,3 @@
-/**
- * Login Page
- *
- * Form with Email and password fields, loading state, direct password reset modal, and link to signup.
- */
-
 import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
