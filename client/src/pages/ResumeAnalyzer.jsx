@@ -11,7 +11,6 @@ import { analyzeResume } from '../api/analysis';
 import { getResumes, getResume, updateResume, createResume } from '../api/resumes';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../api/axios';
-import { downloadResumeAsPDF, downloadTextAsFile } from '../utils/pdf';
 import {
   Upload, FileText, Sparkles, BarChart3, AlertTriangle,
   CheckCircle, XCircle, Info, ChevronDown, ChevronUp,
@@ -31,9 +30,6 @@ export default function ResumeAnalyzer() {
   const [resumes, setResumes] = useState([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(location.state?.historyResult || null);
-  const [expandedSections, setExpandedSections] = useState({});
-  const [filterType, setFilterType] = useState('all');
-
   const [appliedSuggestions, setAppliedSuggestions] = useState(new Set());
   const [abortController, setAbortController] = useState(null);
 

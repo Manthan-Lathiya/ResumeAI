@@ -7,18 +7,19 @@
  * - Live preview on the right side
  * - Auto-save as draft
  * - Add/remove dynamic items (experience, education, etc.)
+ * - AI-powered field enhancement (summary, bullets, skills)
  */
 
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
-import { createResume, updateResume, getResume, generateResumeWithAI, enhanceFieldWithAI } from '../api/resumes';
+import { createResume, updateResume, getResume, enhanceFieldWithAI } from '../api/resumes';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../api/axios';
 import ResumePreview from '../components/ResumePreview';
 import { TEMPLATES, COLOR_PRESETS } from '../templates/registry';
 import {
   User, Briefcase, GraduationCap, Code, FolderOpen, FileText, Palette, Check,
-  Plus, Trash2, Save, Eye, EyeOff, ChevronRight, CheckCircle, Download, Sparkles, Wand2, X
+  Plus, Trash2, Save, Eye, EyeOff, CheckCircle, Download, Sparkles,
 } from 'lucide-react';
 
 // ─── Section tabs for the form ───
@@ -35,21 +36,49 @@ const SECTIONS = [
 // ─── Empty templates for adding new items ───
 const EMPTY_EXPERIENCE = {
   company: '', title: '', location: '', startDate: '', endDate: '',
-  current: false, bullets: ['']
+  current: false, bullets: [''],
 };
 
 const EMPTY_EDUCATION = {
-  institution: '', degree: '', startDate: '', endDate: '', gpa: ''
+  institution: '', degree: '', startDate: '', endDate: '', gpa: '',
 };
 
 const EMPTY_PROJECT = {
-  name: '', description: '', technologies: [], link: ''
+  name: '', description: '', technologies: [], link: '',
 };
+
+// ─── Shared normalizers (used by both loadResume and populateFromData) ───
+function normalizeExperience(expArray) {
+  if (!expArray || !expArray.length) return [{ ...EMPTY_EXPERIENCE }];
+  return expArray.map((exp) => ({
+    ...exp,
+    bullets: exp.bullets || (exp.description ? [exp.description] : ['']),
+  }));
+}
+
+function normalizeEducation(eduArray) {
+  if (!eduArray || !eduArray.length) return [{ ...EMPTY_EDUCATION }];
+  return eduArray.map((edu) => ({
+    ...edu,
+    startDate: edu.startDate || '',
+    endDate: edu.endDate || edu.graduationDate || '',
+    gpa: edu.gpa || '',
+  }));
+}
+
+function normalizeProjects(projArray) {
+  if (!projArray || !projArray.length) return [{ ...EMPTY_PROJECT }];
+  return projArray.map((proj) => ({
+    ...proj,
+    technologies: proj.technologies || [],
+  }));
+}
 
 export default function ResumeBuilder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const editId = searchParams.get('id') || searchParams.get('resumeId'); // If editing existing resume
+  const editId = searchParams.get('id') || searchParams.get('resumeId');
 
   // Form state
   const [title, setTitle] = useState('Untitled Resume');
@@ -65,7 +94,7 @@ export default function ResumeBuilder() {
 
   // Resume data
   const [personalInfo, setPersonalInfo] = useState({
-    fullName: '', email: '', phone: '', location: '', linkedin: '', website: ''
+    fullName: '', email: '', phone: '', location: '', linkedin: '', website: '',
   });
   const [summary, setSummary] = useState('');
   const [experience, setExperience] = useState([{ ...EMPTY_EXPERIENCE }]);
@@ -85,7 +114,7 @@ export default function ResumeBuilder() {
       const response = await enhanceFieldWithAI({
         fieldType,
         currentValue,
-        context: context || title || 'Target Position'
+        context: context || title || 'Target Position',
       });
       const val = response.data?.enhancedValue;
       if (val) {
@@ -108,9 +137,7 @@ export default function ResumeBuilder() {
     }
   }
 
-  const location = useLocation();
-
-  // Load existing resume if editing or populate from state
+  // Load existing resume if editing or populate from navigation state
   useEffect(() => {
     if (location.state?.initialData) {
       populateFromData(location.state.initialData);
@@ -118,7 +145,7 @@ export default function ResumeBuilder() {
     if (editId) {
       loadResume(editId);
     }
-  }, [editId]);
+  }, [editId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function populateFromData(data) {
     if (!data) return;
@@ -128,33 +155,6 @@ export default function ResumeBuilder() {
     if (data.personalInfo || data.personal_info) setPersonalInfo(data.personalInfo || data.personal_info);
     if (data.summary !== undefined) setSummary(data.summary);
     if (data.skills) setSkills(data.skills);
-
-    const normalizeExperience = (expArray) => {
-      if (!expArray || !expArray.length) return [{ ...EMPTY_EXPERIENCE }];
-      return expArray.map(exp => ({
-        ...exp,
-        bullets: exp.bullets || (exp.description ? [exp.description] : ['']),
-      }));
-    };
-
-    const normalizeEducation = (eduArray) => {
-      if (!eduArray || !eduArray.length) return [{ ...EMPTY_EDUCATION }];
-      return eduArray.map(edu => ({
-        ...edu,
-        startDate: edu.startDate || '',
-        endDate: edu.endDate || edu.graduationDate || '',
-        gpa: edu.gpa || '',
-      }));
-    };
-
-    const normalizeProjects = (projArray) => {
-      if (!projArray || !projArray.length) return [{ ...EMPTY_PROJECT }];
-      return projArray.map(proj => ({
-        ...proj,
-        technologies: proj.technologies || [],
-      }));
-    };
-
     if (data.experience) setExperience(normalizeExperience(data.experience));
     if (data.education) setEducation(normalizeEducation(data.education));
     if (data.projects) setProjects(normalizeProjects(data.projects));
@@ -170,32 +170,6 @@ export default function ResumeBuilder() {
       setThemeColor(data.theme_color || data.themeColor || '#2563eb');
       setPersonalInfo(data.personal_info || data.personalInfo || {});
       setSummary(data.summary || '');
-      const normalizeExperience = (expArray) => {
-        if (!expArray || !expArray.length) return [{ ...EMPTY_EXPERIENCE }];
-        return expArray.map(exp => ({
-          ...exp,
-          bullets: exp.bullets || (exp.description ? [exp.description] : ['']),
-        }));
-      };
-
-      const normalizeEducation = (eduArray) => {
-        if (!eduArray || !eduArray.length) return [{ ...EMPTY_EDUCATION }];
-        return eduArray.map(edu => ({
-          ...edu,
-          startDate: edu.startDate || '',
-          endDate: edu.endDate || edu.graduationDate || '',
-          gpa: edu.gpa || '',
-        }));
-      };
-
-      const normalizeProjects = (projArray) => {
-        if (!projArray || !projArray.length) return [{ ...EMPTY_PROJECT }];
-        return projArray.map(proj => ({
-          ...proj,
-          technologies: proj.technologies || [],
-        }));
-      };
-
       setExperience(normalizeExperience(data.experience));
       setEducation(normalizeEducation(data.education));
       setSkills(data.skills || []);
@@ -227,7 +201,7 @@ export default function ResumeBuilder() {
     return Object.keys(newErrors).length === 0;
   }
 
-  // Save resume
+  // ─── Save resume ───
   async function handleSave(status = 'draft') {
     if (!validateForm()) {
       toast.error('Please fix the errors in your personal info before saving.');
@@ -240,10 +214,10 @@ export default function ResumeBuilder() {
       title,
       personalInfo,
       summary,
-      experience: experience.filter(e => e.company || e.title),
-      education: education.filter(e => e.institution || e.degree),
+      experience: experience.filter((e) => e.company || e.title),
+      education: education.filter((e) => e.institution || e.degree),
       skills,
-      projects: projects.filter(p => p.name),
+      projects: projects.filter((p) => p.name),
       templateId,
       themeColor,
       status,
@@ -274,7 +248,6 @@ export default function ResumeBuilder() {
       return;
     }
 
-    // Open a new window with print-ready content
     const printWindow = window.open('', '_blank', 'width=800,height=1100');
     if (!printWindow) {
       toast.error('Pop-up blocked. Please allow pop-ups for this site.');
@@ -341,23 +314,23 @@ export default function ResumeBuilder() {
 
           ${summary ? `<div class="section-title">Professional Summary</div><p style="font-size:10.5pt;color:#333;">${summary}</p>` : ''}
 
-          ${experience.filter(e => e.company || e.title).length > 0 ? `
+          ${experience.filter((e) => e.company || e.title).length > 0 ? `
             <div class="section-title">Experience</div>
-            ${experience.filter(e => e.company || e.title).map(exp => `
+            ${experience.filter((e) => e.company || e.title).map((exp) => `
               <div class="mb-3">
                 <div class="job-header">
                   <strong>${exp.title || 'Job Title'}</strong>
                   <span class="date">${exp.startDate} – ${exp.current ? 'Present' : exp.endDate}</span>
                 </div>
                 <div class="company">${exp.company}${exp.location ? ` • ${exp.location}` : ''}</div>
-                ${exp.bullets?.filter(Boolean).length > 0 ? `<ul>${exp.bullets.filter(Boolean).map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+                ${exp.bullets?.filter(Boolean).length > 0 ? `<ul>${exp.bullets.filter(Boolean).map((b) => `<li>${b}</li>`).join('')}</ul>` : ''}
               </div>
             `).join('')}
           ` : ''}
 
-          ${education.filter(e => e.institution || e.degree).length > 0 ? `
+          ${education.filter((e) => e.institution || e.degree).length > 0 ? `
             <div class="section-title">Education</div>
-            ${education.filter(e => e.institution || e.degree).map(edu => `
+            ${education.filter((e) => e.institution || e.degree).map((edu) => `
               <div class="mb-2">
                 <div class="edu-row">
                   <strong>${edu.degree || 'Degree'}</strong>
@@ -373,9 +346,9 @@ export default function ResumeBuilder() {
             <p class="skills">${skills.join(' • ')}</p>
           ` : ''}
 
-          ${projects.filter(p => p.name).length > 0 ? `
+          ${projects.filter((p) => p.name).length > 0 ? `
             <div class="section-title">Projects</div>
-            ${projects.filter(p => p.name).map(proj => `
+            ${projects.filter((p) => p.name).map((proj) => `
               <div class="mb-2">
                 <span class="project-name">${proj.name}</span>
                 ${proj.link ? `<span class="project-link">${proj.link}</span>` : ''}
@@ -388,7 +361,6 @@ export default function ResumeBuilder() {
       </html>
     `);
     printWindow.document.close();
-    // Wait for content to render, then trigger print
     printWindow.onload = () => {
       printWindow.print();
     };
@@ -698,7 +670,7 @@ export default function ResumeBuilder() {
 
             <div className="flex flex-wrap gap-2">
               {skills.map((skill, i) => (
-                <span key={i} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-500/15 
+                <span key={i} className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-500/15
                                        text-primary-300 rounded-lg text-sm">
                   {skill}
                   <button onClick={() => setSkills(skills.filter((_, idx) => idx !== i))}
@@ -752,7 +724,7 @@ export default function ResumeBuilder() {
                     <input
                       value={(proj.technologies || []).join(', ')}
                       onChange={(e) => updateProject(i, 'technologies',
-                        e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                        e.target.value.split(',').map((t) => t.trim()).filter(Boolean))}
                       placeholder="React, Node.js, PostgreSQL"
                       className="input-field text-sm"
                     />
@@ -854,7 +826,6 @@ export default function ResumeBuilder() {
 
   // ─── Live Preview ───
   function renderPreview() {
-    // Construct the resume object from state to pass to ResumePreview
     const resumeData = {
       personalInfo,
       summary,
@@ -863,9 +834,8 @@ export default function ResumeBuilder() {
       skills,
       projects,
       templateId,
-      themeColor
+      themeColor,
     };
-
     return <ResumePreview resume={resumeData} />;
   }
 
@@ -877,7 +847,7 @@ export default function ResumeBuilder() {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="text-2xl font-bold bg-transparent text-gray-100 border-b border-transparent 
+            className="text-2xl font-bold bg-transparent text-gray-100 border-b border-transparent
                      hover:border-gray-700 focus:border-primary-500 focus:outline-none transition-colors px-1"
           />
         </div>

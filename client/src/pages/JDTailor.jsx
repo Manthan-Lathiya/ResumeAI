@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getResumes, createResume } from '../api/resumes';
 import { tailorResume } from '../api/tailor';

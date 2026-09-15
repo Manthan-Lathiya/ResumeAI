@@ -11,7 +11,6 @@ import { getResumes, updateResume, createResume } from '../api/resumes';
 import { compareJobDescription } from '../api/analysis';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '../api/axios';
-import { downloadResumeAsPDF, downloadTextAsFile } from '../utils/pdf';
 import {
   GitCompare, Sparkles, CheckCircle, XCircle, ArrowRight,
   FileText, Target, Zap, Upload, Download, Edit3, Wand2,

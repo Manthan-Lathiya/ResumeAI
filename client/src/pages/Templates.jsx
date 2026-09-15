@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TEMPLATES, COLOR_PRESETS } from '../templates/registry';
 import TemplateThumbnail from '../components/TemplateThumbnail';

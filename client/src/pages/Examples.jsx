@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SAMPLE_RESUMES } from '../data/sampleResumes';
 import TemplateThumbnail from '../components/TemplateThumbnail';
